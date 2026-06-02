@@ -1,15 +1,221 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { LyricsLine } from '../types'
 
 interface UseLyricsArgs {
+  albumName?: string | null
   artistName: string | null
+  durationMs?: number
   progressMs: number
   trackName: string | null
 }
 
 interface LrcLibResponse {
+  albumName?: string | null
+  artistName?: string | null
+  duration?: number | null
+  id?: number
+  name?: string | null
   plainLyrics?: string | null
   syncedLyrics?: string | null
+  trackName?: string | null
+}
+
+interface LyricsCacheEntry {
+  fetchedHasSyncedLyrics: boolean
+  fetchedLines: LyricsLine[]
+  fetchedSourceDescription: string | null
+  manualLyricsText: string
+  updatedAt: number
+}
+
+const JAPANESE_TEXT_PATTERN = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/
+const CACHE_PREFIX = 'japoncaegitim:lyrics-cache:v1'
+const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1_000
+
+const normalizeValue = (value: string | null | undefined) =>
+  (value ?? '')
+    .normalize('NFKC')
+    .toLocaleLowerCase('tr-TR')
+    .replace(/[^\p{L}\p{N}]+/gu, '')
+
+const hasJapaneseContent = (lyrics: string) => JAPANESE_TEXT_PATTERN.test(lyrics)
+
+const buildTrackCacheKey = ({
+  albumName,
+  artistName,
+  durationMs,
+  trackName,
+}: Pick<UseLyricsArgs, 'albumName' | 'artistName' | 'durationMs' | 'trackName'>) =>
+  [
+    normalizeValue(artistName),
+    normalizeValue(trackName),
+    normalizeValue(albumName),
+    durationMs ? String(Math.round(durationMs / 1_000)) : '0',
+  ].join('|')
+
+const getCacheKey = (trackKey: string) => `${CACHE_PREFIX}:${trackKey || 'unknown'}`
+
+const readLyricsCache = (trackKey: string) => {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(getCacheKey(trackKey))
+
+    if (!rawValue) {
+      return null
+    }
+
+    const parsed = JSON.parse(rawValue) as Partial<LyricsCacheEntry>
+
+    if (typeof parsed.updatedAt !== 'number') {
+      return null
+    }
+
+    if (Date.now() - parsed.updatedAt > CACHE_TTL_MS) {
+      return null
+    }
+
+    return {
+      fetchedHasSyncedLyrics: Boolean(parsed.fetchedHasSyncedLyrics),
+      fetchedLines: Array.isArray(parsed.fetchedLines) ? parsed.fetchedLines : [],
+      fetchedSourceDescription:
+        typeof parsed.fetchedSourceDescription === 'string'
+          ? parsed.fetchedSourceDescription
+          : null,
+      manualLyricsText: typeof parsed.manualLyricsText === 'string' ? parsed.manualLyricsText : '',
+      updatedAt: parsed.updatedAt,
+    } satisfies LyricsCacheEntry
+  } catch {
+    return null
+  }
+}
+
+const writeLyricsCache = (trackKey: string, entry: LyricsCacheEntry) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(getCacheKey(trackKey), JSON.stringify(entry))
+  } catch {
+    // Ignore storage quota or privacy-mode errors.
+  }
+}
+
+const getJapaneseCharacterRatio = (lyrics: string) => {
+  const nonWhitespaceLength = lyrics.replace(/\s+/g, '').length
+
+  if (nonWhitespaceLength === 0) {
+    return 0
+  }
+
+  const japaneseCharacterCount = lyrics.match(new RegExp(JAPANESE_TEXT_PATTERN.source, 'g'))?.length ?? 0
+  return japaneseCharacterCount / nonWhitespaceLength
+}
+
+const scoreCandidate = (
+  candidate: LrcLibResponse,
+  {
+    albumName,
+    artistName,
+    durationMs,
+    trackName,
+  }: Pick<UseLyricsArgs, 'albumName' | 'artistName' | 'durationMs' | 'trackName'>,
+) => {
+  const normalizedArtist = normalizeValue(artistName)
+  const normalizedTrack = normalizeValue(trackName)
+  const normalizedAlbum = normalizeValue(albumName)
+  const candidateTrack = normalizeValue(candidate.trackName ?? candidate.name)
+  const candidateArtist = normalizeValue(candidate.artistName)
+  const candidateAlbum = normalizeValue(candidate.albumName)
+  const lyrics = candidate.syncedLyrics?.trim() || candidate.plainLyrics?.trim() || ''
+  const japaneseRatio = getJapaneseCharacterRatio(lyrics)
+  const containsJapanese = hasJapaneseContent(lyrics)
+
+  let score = 0
+
+  if (normalizedTrack && candidateTrack) {
+    if (candidateTrack === normalizedTrack) {
+      score += 40
+    } else if (
+      candidateTrack.includes(normalizedTrack) ||
+      normalizedTrack.includes(candidateTrack)
+    ) {
+      score += 20
+    }
+  }
+
+  if (normalizedArtist && candidateArtist) {
+    if (candidateArtist === normalizedArtist) {
+      score += 30
+    } else if (
+      candidateArtist.includes(normalizedArtist) ||
+      normalizedArtist.includes(candidateArtist)
+    ) {
+      score += 15
+    }
+  }
+
+  if (normalizedAlbum && candidateAlbum) {
+    if (candidateAlbum === normalizedAlbum) {
+      score += 20
+    } else if (
+      candidateAlbum.includes(normalizedAlbum) ||
+      normalizedAlbum.includes(candidateAlbum)
+    ) {
+      score += 10
+    }
+  }
+
+  if (durationMs && candidate.duration) {
+    const durationDeltaMs = Math.abs(durationMs - candidate.duration * 1_000)
+
+    if (durationDeltaMs <= 1_500) {
+      score += 35
+    } else if (durationDeltaMs <= 5_000) {
+      score += 20
+    } else if (durationDeltaMs <= 10_000) {
+      score += 10
+    } else {
+      score -= Math.min(20, Math.round(durationDeltaMs / 1_000))
+    }
+  }
+
+  if (candidate.syncedLyrics?.trim()) {
+    score += 10
+  }
+
+  if (!lyrics) {
+    score -= 40
+  }
+
+  score += Math.round(japaneseRatio * 60)
+
+  if (containsJapanese) {
+    score += 80
+  } else if (lyrics) {
+    score -= 30
+  }
+
+  return score
+}
+
+const getBestCandidate = (
+  candidates: LrcLibResponse[],
+  criteria: Pick<UseLyricsArgs, 'albumName' | 'artistName' | 'durationMs' | 'trackName'>,
+) => {
+  const japaneseCandidates = candidates.filter((candidate) => {
+    const lyrics = candidate.syncedLyrics?.trim() || candidate.plainLyrics?.trim() || ''
+    return hasJapaneseContent(lyrics)
+  })
+
+  const prioritizedCandidates = japaneseCandidates.length > 0 ? japaneseCandidates : candidates
+
+  return [...prioritizedCandidates].sort(
+    (left, right) => scoreCandidate(right, criteria) - scoreCandidate(left, criteria),
+  )[0]
 }
 
 const parseTimestampMs = (minutesText: string, secondsText: string, fractionText?: string) => {
@@ -52,15 +258,109 @@ const parsePlainLyrics = (lyrics: string): LyricsLine[] =>
       timestampMs: null,
     }))
 
-export const useLyrics = ({ artistName, progressMs, trackName }: UseLyricsArgs) => {
-  const [lines, setLines] = useState<LyricsLine[]>([])
-  const [hasSyncedLyrics, setHasSyncedLyrics] = useState(false)
+export const useLyrics = ({ albumName, artistName, durationMs, progressMs, trackName }: UseLyricsArgs) => {
+  const [cachedLines, setCachedLines] = useState<LyricsLine[]>([])
+  const [cachedHasSyncedLyrics, setCachedHasSyncedLyrics] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sourceDescription, setSourceDescription] = useState<string | null>(null)
+  const [manualLyricsText, setManualLyricsTextState] = useState('')
+  const [loadedTrackKey, setLoadedTrackKey] = useState('')
+  const [refreshCounter, setRefreshCounter] = useState(0)
   const hasTrack = Boolean(artistName && trackName)
+
+  const trackCacheKey = useMemo(
+    () => buildTrackCacheKey({ albumName, artistName, durationMs, trackName }),
+    [albumName, artistName, durationMs, trackName],
+  )
+
+  const manualLyricsLines = useMemo(() => {
+    const trimmedManualLyrics = manualLyricsText.trim()
+
+    return trimmedManualLyrics ? parsePlainLyrics(trimmedManualLyrics) : null
+  }, [manualLyricsText])
+
+  const trackDataIsActive = loadedTrackKey === trackCacheKey && hasTrack
+  const lines = useMemo(
+    () => (trackDataIsActive ? manualLyricsLines ?? cachedLines : []),
+    [cachedLines, manualLyricsLines, trackDataIsActive],
+  )
+  const hasSyncedLyrics = trackDataIsActive ? (manualLyricsLines ? false : cachedHasSyncedLyrics) : false
+  const effectiveSourceDescription = trackDataIsActive
+    ? manualLyricsLines
+      ? 'Kullanıcı tarafından girilen sözler kullanılıyor.'
+      : sourceDescription
+    : null
+
+  const applyCachedLyricsState = useCallback(
+    (entry: LyricsCacheEntry) => {
+      setCachedLines(entry.fetchedLines)
+      setCachedHasSyncedLyrics(entry.fetchedHasSyncedLyrics)
+      setManualLyricsTextState(entry.manualLyricsText)
+      setSourceDescription(entry.fetchedSourceDescription)
+      setLoadedTrackKey(trackCacheKey)
+      setIsLoading(false)
+      setError(null)
+    },
+    [trackCacheKey],
+  )
+
+  const applyEmptyLyricsState = useCallback(
+    (message: string) => {
+      const nextEmptyEntry: LyricsCacheEntry = {
+        fetchedHasSyncedLyrics: false,
+        fetchedLines: [],
+        fetchedSourceDescription: null,
+        manualLyricsText: '',
+        updatedAt: Date.now(),
+      }
+
+      setCachedLines([])
+      setCachedHasSyncedLyrics(false)
+      setSourceDescription(null)
+      writeLyricsCache(trackCacheKey, nextEmptyEntry)
+      setLoadedTrackKey(trackCacheKey)
+      setError(message)
+      setIsLoading(false)
+    },
+    [trackCacheKey],
+  )
+
+  const setManualLyricsText = (value: string) => {
+    setManualLyricsTextState(value)
+
+    if (!hasTrack) {
+      return
+    }
+
+    writeLyricsCache(trackCacheKey, {
+      fetchedHasSyncedLyrics: cachedHasSyncedLyrics,
+      fetchedLines: cachedLines,
+      fetchedSourceDescription: sourceDescription,
+      manualLyricsText: value,
+      updatedAt: Date.now(),
+    })
+  }
+
+  const clearManualLyricsText = () => {
+    setManualLyricsText('')
+  }
+
+  const refreshLyrics = () => {
+    setRefreshCounter((currentValue) => currentValue + 1)
+  }
 
   useEffect(() => {
     if (!hasTrack || !artistName || !trackName) {
+      return
+    }
+
+    const cachedEntry = readLyricsCache(trackCacheKey)
+
+    if (cachedEntry) {
+      queueMicrotask(() => {
+        applyCachedLyricsState(cachedEntry)
+      })
       return
     }
 
@@ -76,14 +376,12 @@ export const useLyrics = ({ artistName, progressMs, trackName }: UseLyricsArgs) 
           track_name: trackName,
         })
 
-        const response = await fetch(`https://lrclib.net/api/get?${params.toString()}`, {
+        const response = await fetch(`https://lrclib.net/api/search?${params.toString()}`, {
           signal: controller.signal,
         })
 
         if (response.status === 404) {
-          setLines([])
-          setHasSyncedLyrics(false)
-          setError('Bu parça için LRCLIB üzerinde söz bulunamadı.')
+          applyEmptyLyricsState('Bu parça için LRCLIB üzerinde söz bulunamadı.')
           return
         }
 
@@ -91,33 +389,69 @@ export const useLyrics = ({ artistName, progressMs, trackName }: UseLyricsArgs) 
           throw new Error(`LRCLIB hatası: ${response.status}`)
         }
 
-        const payload = (await response.json()) as LrcLibResponse
-        const syncedLyrics = payload.syncedLyrics?.trim()
-        const plainLyrics = payload.plainLyrics?.trim()
+        let payload = (await response.json()) as LrcLibResponse[]
 
-        if (syncedLyrics) {
-          setLines(parseSyncedLyrics(syncedLyrics))
-          setHasSyncedLyrics(true)
+        if (payload.length === 0) {
+          const fallbackResponse = await fetch(`https://lrclib.net/api/get?${params.toString()}`, {
+            signal: controller.signal,
+          })
+
+          if (fallbackResponse.status === 404) {
+            applyEmptyLyricsState('Bu parça için LRCLIB üzerinde söz bulunamadı.')
+            return
+          }
+
+          if (!fallbackResponse.ok) {
+            throw new Error(`LRCLIB hatası: ${fallbackResponse.status}`)
+          }
+
+          payload = [(await fallbackResponse.json()) as LrcLibResponse]
+        }
+
+        const bestCandidate = getBestCandidate(payload, {
+          albumName,
+          artistName,
+          durationMs,
+          trackName,
+        })
+
+        if (!bestCandidate) {
+          applyEmptyLyricsState('Bu parça için LRCLIB üzerinde uygun söz bulunamadı.')
           return
         }
 
-        if (plainLyrics) {
-          setLines(parsePlainLyrics(plainLyrics))
-          setHasSyncedLyrics(false)
+        const syncedLyrics = bestCandidate.syncedLyrics?.trim()
+        const plainLyrics = bestCandidate.plainLyrics?.trim()
+        const lyricType = syncedLyrics ? 'senkronize' : 'plain'
+        const sourceMessage =
+          payload.length > 1
+            ? `LRCLIB ${payload.length} aday arasından isim, sanatçı, albüm, süre ve Japonca içerik skoruna göre ${lyricType} kayıt seçildi.`
+            : `LRCLIB ${lyricType} kayıt kullanıldı.`
+        const nextLines = syncedLyrics ? parseSyncedLyrics(syncedLyrics) : parsePlainLyrics(plainLyrics ?? '')
+        const nextEntry: LyricsCacheEntry = {
+          fetchedHasSyncedLyrics: Boolean(syncedLyrics),
+          fetchedLines: nextLines,
+          fetchedSourceDescription: sourceMessage,
+          manualLyricsText,
+          updatedAt: Date.now(),
+        }
+
+        applyCachedLyricsState(nextEntry)
+        writeLyricsCache(trackCacheKey, nextEntry)
+
+        if (!syncedLyrics && !plainLyrics) {
+          setError('Şarkı sözü verisi boş döndü.')
+        }
+      } catch (fetchError) {
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
           return
         }
 
-        setLines([])
-        setHasSyncedLyrics(false)
-        setError('Şarkı sözü verisi boş döndü.')
-      } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') {
-          return
-        }
-
-        setError(error instanceof Error ? error.message : 'Şarkı sözleri alınamadı.')
-        setLines([])
-        setHasSyncedLyrics(false)
+        setError(fetchError instanceof Error ? fetchError.message : 'Şarkı sözleri alınamadı.')
+        setCachedLines([])
+        setCachedHasSyncedLyrics(false)
+        setSourceDescription(null)
+        setLoadedTrackKey(trackCacheKey)
       } finally {
         setIsLoading(false)
       }
@@ -128,10 +462,21 @@ export const useLyrics = ({ artistName, progressMs, trackName }: UseLyricsArgs) 
     return () => {
       controller.abort()
     }
-  }, [artistName, hasTrack, trackName])
+  }, [
+    albumName,
+    applyCachedLyricsState,
+    applyEmptyLyricsState,
+    artistName,
+    durationMs,
+    hasTrack,
+    manualLyricsText,
+    refreshCounter,
+    trackCacheKey,
+    trackName,
+  ])
 
   const activeLineIndex = useMemo(() => {
-    if (!hasTrack || !hasSyncedLyrics || lines.length === 0) {
+    if (!trackDataIsActive || !hasSyncedLyrics || lines.length === 0) {
       return -1
     }
 
@@ -144,13 +489,19 @@ export const useLyrics = ({ artistName, progressMs, trackName }: UseLyricsArgs) 
     })
 
     return activeIndex
-  }, [hasSyncedLyrics, hasTrack, lines, progressMs])
+  }, [hasSyncedLyrics, lines, progressMs, trackDataIsActive])
 
   return {
     activeLineIndex,
+    clearManualLyricsText,
     error: hasTrack ? error : null,
     hasSyncedLyrics: hasTrack ? hasSyncedLyrics : false,
     isLoading: hasTrack ? isLoading : false,
+    isUsingManualLyrics: hasTrack ? Boolean(manualLyricsText.trim()) : false,
     lines: hasTrack ? lines : [],
+    manualLyricsText: trackDataIsActive ? manualLyricsText : '',
+    refreshLyrics,
+    setManualLyricsText,
+    sourceDescription: hasTrack ? effectiveSourceDescription : null,
   }
 }

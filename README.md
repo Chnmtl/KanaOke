@@ -17,11 +17,14 @@ Spotify'da çalan şarkıyı algılayan, LRCLIB'den senkronize sözleri çeken v
    - Redirect URI olarak yerelde `http://localhost:5173/callback` ekle.
    - Codespaces kullanıyorsan ayrıca `https://<codespace-adı>-5173.app.github.dev/callback` biçimindeki URI'yi de ekle.
 
-2. **GitHub PAT oluştur**
-   - GitHub Models API kullanımı için uygun erişime sahip bir Personal Access Token oluştur.
+2. **GitHub Models için backend proxy hazırla (önerilen)**
+   - GitHub Models API anahtarını istemciye koyma.
+   - Token'ı yalnızca sunucu tarafında tutan bir endpoint kullan (ör. `/api/analyze`).
 
 3. **`.env` dosyasını ayarla**
    - Kök dizinde `.env.example` dosyasını `.env` olarak kopyala ve değerleri doldur.
+   - `VITE_ANALYSIS_API_URL` değerini backend endpoint'ine yönlendir.
+   - `VITE_ALLOW_INSECURE_CLIENT_TOKEN` değerini `false` bırak.
 
 4. **Bağımlılıkları kur ve çalıştır**
    ```bash
@@ -46,4 +49,5 @@ npm run build
 
 - Public port 5173 adresini aç ve oluşan URL'nin sonuna `/callback` ekleyerek Spotify Redirect URI olarak kaydet.
 - `VITE_SPOTIFY_REDIRECT_URI` değerini bu callback adresiyle eşleştir.
-- `VITE_GITHUB_TOKEN` değerini Codespaces secret ya da `.env` ile sağlayabilirsin.
+- GitHub token'ını istemci `.env` dosyasına koyma; backend tarafında Codespaces secret olarak kullan.
+- Sadece geçici test için `VITE_ALLOW_INSECURE_CLIENT_TOKEN=true` ve `VITE_GITHUB_TOKEN` kullanımı mümkündür (üretimde önerilmez).
