@@ -80,25 +80,25 @@ function App() {
     } finally {
       setIsAnalyzing(false)
     }
+  }
 
-    const handleSaveToken = () => {
-      const sanitizedToken = githubTokenInput.trim()
+  const handleSaveToken = () => {
+    const sanitizedToken = githubTokenInput.trim()
 
-      if (!sanitizedToken) {
-        setAnalysisError('Boş token kaydedilemez.')
-        return
-      }
-
-      setGitHubToken(sanitizedToken)
-      setHasGitHubToken(true)
-      setAnalysisError(null)
+    if (!sanitizedToken) {
+      setAnalysisError('Boş token kaydedilemez.')
+      return
     }
 
-    const handleClearToken = () => {
-      clearGitHubToken()
-      setGithubTokenInput('')
-      setHasGitHubToken(false)
-    }
+    setGitHubToken(sanitizedToken)
+    setHasGitHubToken(true)
+    setAnalysisError(null)
+  }
+
+  const handleClearToken = () => {
+    clearGitHubToken()
+    setGithubTokenInput('')
+    setHasGitHubToken(false)
   }
 
   if (!isAuthenticated) {
