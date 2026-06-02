@@ -19,6 +19,7 @@ interface SpotifyCurrentlyPlayingResponse {
   item?: {
     album?: {
       images?: Array<{ url?: string }>
+      name?: string
     }
     artists?: Array<{ name?: string }>
     duration_ms?: number
@@ -30,6 +31,7 @@ interface SpotifyCurrentlyPlayingResponse {
 const ACCESS_STORAGE_KEY = 'spotify_tokens'
 const VERIFIER_STORAGE_KEY = 'spotify_pkce_verifier'
 const POLL_INTERVAL_MS = 1_000
+const LOCAL_PROGRESS_TICK_MS = 200
 const TOKEN_REFRESH_BUFFER_MS = 60_000
 const SPOTIFY_SCOPES = 'user-read-currently-playing user-read-playback-state'
 
@@ -89,6 +91,7 @@ const mapPlayerResponse = (payload: SpotifyCurrentlyPlayingResponse): SpotifyTra
   }
 
   return {
+    albumName: payload.item.album?.name,
     albumImageUrl: payload.item.album?.images?.[0]?.url,
     artist: payload.item.artists?.[0]?.name ?? 'Bilinmeyen sanatçı',
     durationMs: payload.item.duration_ms ?? 0,
@@ -110,6 +113,7 @@ export const useSpotifyPlayer = () => {
   const [error, setError] = useState<string | null>(null)
   const accessTokenRef = useRef<string | null>(null)
   const refreshTokenRef = useRef<string | null>(null)
+  const lastProgressTickAtRef = useRef<number | null>(null)
   const isConfigured = useMemo(() => Boolean(clientId && redirectUri), [clientId, redirectUri])
 
   const refreshAccessToken = useCallback(async () => {
@@ -310,6 +314,46 @@ export const useSpotifyPlayer = () => {
       window.clearInterval(intervalId)
     }
   }, [fetchCurrentlyPlaying, isAuthenticated])
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return
+    }
+
+    lastProgressTickAtRef.current = Date.now()
+
+    const intervalId = window.setInterval(() => {
+      const now = Date.now()
+      const lastTickAt = lastProgressTickAtRef.current ?? now
+      const deltaMs = Math.max(0, now - lastTickAt)
+      lastProgressTickAtRef.current = now
+
+      setPlayer((currentPlayer) => {
+        if (!currentPlayer || !currentPlayer.isPlaying || currentPlayer.durationMs <= 0) {
+          return currentPlayer
+        }
+
+        if (currentPlayer.progressMs >= currentPlayer.durationMs) {
+          return currentPlayer
+        }
+
+        const nextProgressMs = Math.min(currentPlayer.durationMs, currentPlayer.progressMs + deltaMs)
+
+        if (nextProgressMs === currentPlayer.progressMs) {
+          return currentPlayer
+        }
+
+        return {
+          ...currentPlayer,
+          progressMs: nextProgressMs,
+        }
+      })
+    }, LOCAL_PROGRESS_TICK_MS)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [isAuthenticated])
 
   const login = useCallback(async () => {
     if (!clientId || !redirectUri) {
