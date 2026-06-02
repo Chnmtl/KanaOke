@@ -1,40 +1,63 @@
+import { BoltIcon, DatabaseIcon, InfoIcon } from './icons'
 import type { AnalysisResult, LyricsLine } from '../types'
+
+const InfoBubble = ({ title }: { title: string }) => (
+  <span
+    className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-600 text-[9px] leading-none text-gray-400 transition hover:border-emerald-400 hover:text-emerald-300"
+    title={title}
+  >
+    <InfoIcon className="h-3 w-3" />
+  </span>
+)
 
 interface AnalysisPanelProps {
   analysis: AnalysisResult | null
+  analysisSource: 'cache' | 'api' | null
   error: string | null
   isAnalyzing: boolean
-  isJapaneseLine: boolean
   selectedLine: LyricsLine | null
 }
 
 export const AnalysisPanel = ({
   analysis,
+  analysisSource,
   error,
   isAnalyzing,
-  isJapaneseLine,
   selectedLine,
 }: AnalysisPanelProps) => (
-  <aside className="rounded-3xl border border-gray-800 bg-gray-950/80 p-5 shadow-xl shadow-black/20">
+  <aside className="hide-scrollbar h-full min-h-0 overflow-y-auto rounded-3xl border border-gray-800 bg-gray-950/80 p-5 shadow-xl shadow-black/20">
     <p className="text-sm uppercase tracking-[0.3em] text-emerald-400">Analysis</p>
-    <h2 className="mt-1 text-2xl font-semibold text-white">Satır analizi</h2>
+    <div className="mt-1 flex flex-wrap items-center gap-2">
+      <h2 className="text-2xl font-semibold text-white">Satır analizi</h2>
+      {analysis && analysisSource ? (
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] ${
+            analysisSource === 'cache'
+              ? 'border border-emerald-400/40 bg-emerald-500/10 text-emerald-200'
+              : 'border border-cyan-400/40 bg-cyan-500/10 text-cyan-200'
+          }`}
+        >
+          {analysisSource === 'cache' ? (
+            <DatabaseIcon className="h-3.5 w-3.5" />
+          ) : (
+            <BoltIcon className="h-3.5 w-3.5" />
+          )}
+          <span>{analysisSource === 'cache' ? 'Cache' : 'Yeni'}</span>
+        </span>
+      ) : null}
+    </div>
 
     {selectedLine ? (
-      <div className="mt-6 rounded-3xl border border-gray-800 bg-gray-900/70 p-4">
-        <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Seçilen satır</p>
-        <p className="jp-text mt-2 text-lg leading-relaxed text-white">{selectedLine.text}</p>
+      <div className="mt-4 rounded-2xl border border-gray-800 bg-gray-900/60 px-3 py-2">
+        <p className="jp-text truncate text-sm text-gray-200" title={selectedLine.text}>
+          {selectedLine.text}
+        </p>
       </div>
     ) : (
-      <div className="mt-6 rounded-3xl border border-dashed border-gray-800 bg-gray-900/60 p-6 text-sm text-gray-400">
-        Analiz görmek için soldaki Japonca satırlardan birine tıkla.
+      <div className="mt-4 rounded-2xl border border-dashed border-gray-800 bg-gray-900/60 p-4 text-sm text-gray-400">
+        Analiz görmek için soldaki satırlardan birine tıkla.
       </div>
     )}
-
-    {selectedLine && !isJapaneseLine ? (
-      <div className="mt-4 rounded-3xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100">
-        Bu satır Japonca karakter içermediği için analiz devre dışı bırakıldı.
-      </div>
-    ) : null}
 
     {isAnalyzing ? (
       <div className="mt-4 flex min-h-48 flex-col items-center justify-center gap-3 rounded-3xl border border-gray-800 bg-gray-900/60">
@@ -50,15 +73,24 @@ export const AnalysisPanel = ({
     ) : null}
 
     {analysis && !isAnalyzing ? (
-      <div className="mt-6 space-y-6">
-        <section className="rounded-3xl border border-gray-800 bg-gray-900/70 p-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Romaji</p>
-          <p className="mt-2 text-base text-white">{analysis.romaji || '—'}</p>
-        </section>
-
-        <section className="rounded-3xl border border-gray-800 bg-gray-900/70 p-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Türkçe</p>
-          <p className="mt-2 text-base text-white">{analysis.turkce || '—'}</p>
+      <div className="mt-4 space-y-5">
+        <section className="rounded-2xl border border-gray-800 bg-gray-900/60 p-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-gray-500">
+                <span>Romaji</span>
+                <InfoBubble title="Japonca satırın Latin harflerle okunuşu." />
+              </div>
+              <p className="mt-1 text-sm text-white">{analysis.romaji || '—'}</p>
+            </div>
+            <div>
+              <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-gray-500">
+                <span>Türkçe</span>
+                <InfoBubble title="Satırın bağlama göre Türkçe anlamı veya kısa çevirisi." />
+              </div>
+              <p className="mt-1 text-sm text-white">{analysis.turkce || '—'}</p>
+            </div>
+          </div>
         </section>
 
         <section>
@@ -66,17 +98,14 @@ export const AnalysisPanel = ({
             <h3 className="text-lg font-semibold text-white">Kelime ve kanji detayları</h3>
             <span className="text-sm text-gray-500">{analysis.kelimeler.length} kart</span>
           </div>
-          <div className="mt-4 grid gap-4">
+          <div className="mt-3 grid gap-3">
             {analysis.kelimeler.length > 0 ? (
               analysis.kelimeler.map((word, index) => (
-                <article
-                  key={`${word.japonca}-${index}`}
-                  className="rounded-3xl border border-gray-800 bg-gray-900/70 p-4"
-                >
+                <article key={`${word.japonca}-${index}`} className="rounded-2xl border border-gray-800 bg-gray-900/65 p-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="jp-text text-xl text-white">{word.japonca || '—'}</p>
-                      <p className="mt-1 text-sm text-emerald-300">{word.romaji || '—'}</p>
+                      <p className="jp-text text-lg text-white">{word.japonca || '—'}</p>
+                      <p className="mt-0.5 text-xs text-emerald-300">{word.romaji || '—'}</p>
                     </div>
                     <span className="rounded-full bg-gray-800 px-3 py-1 text-xs text-gray-400">
                       {word.anlam || 'Anlam yok'}
@@ -84,36 +113,41 @@ export const AnalysisPanel = ({
                   </div>
 
                   {word.kanji ? (
-                    <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <dl className="mt-3 grid gap-2 sm:grid-cols-2">
                       <div className="rounded-2xl bg-gray-950/70 p-3">
-                        <dt className="text-xs uppercase tracking-[0.2em] text-gray-500">
-                          Karakter
+                        <dt className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-gray-500">
+                          <span>Karakter</span>
+                          <InfoBubble title="Kanji ise karakterin kendisi; kana ise ilgili yazım." />
                         </dt>
                         <dd className="jp-text mt-2 text-lg text-white">
                           {word.kanji.karakter || '—'}
                         </dd>
                       </div>
                       <div className="rounded-2xl bg-gray-950/70 p-3">
-                        <dt className="text-xs uppercase tracking-[0.2em] text-gray-500">
-                          Radikal
+                        <dt className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-gray-500">
+                          <span>Radikal</span>
+                          <InfoBubble title="Karakterin anlam taşımaya yardımcı temel parçası." />
                         </dt>
                         <dd className="mt-2 text-sm text-white">{word.kanji.radikal || '—'}</dd>
                       </div>
                       <div className="rounded-2xl bg-gray-950/70 p-3">
-                        <dt className="text-xs uppercase tracking-[0.2em] text-gray-500">
-                          Onyomi
+                        <dt className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-gray-500">
+                          <span>Onyomi</span>
+                          <InfoBubble title="Kanji'nin Çince kökenli okunuşu." />
                         </dt>
                         <dd className="mt-2 text-sm text-white">{word.kanji.onyomi || '—'}</dd>
                       </div>
                       <div className="rounded-2xl bg-gray-950/70 p-3">
-                        <dt className="text-xs uppercase tracking-[0.2em] text-gray-500">
-                          Kunyomi
+                        <dt className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-gray-500">
+                          <span>Kunyomi</span>
+                          <InfoBubble title="Kanji'nin yerli Japonca okunuşu." />
                         </dt>
                         <dd className="mt-2 text-sm text-white">{word.kanji.kunyomi || '—'}</dd>
                       </div>
                       <div className="rounded-2xl bg-gray-950/70 p-3 sm:col-span-2">
-                        <dt className="text-xs uppercase tracking-[0.2em] text-gray-500">
-                          Açıklama
+                        <dt className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-gray-500">
+                          <span>Açıklama</span>
+                          <InfoBubble title="Karakter veya kelimenin kısa anlam notu." />
                         </dt>
                         <dd className="mt-2 text-sm leading-6 text-gray-200">
                           {word.kanji.aciklama || '—'}
@@ -129,11 +163,6 @@ export const AnalysisPanel = ({
               </div>
             )}
           </div>
-        </section>
-
-        <section className="rounded-3xl border border-gray-800 bg-gray-900/70 p-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-gray-500">His analizi</p>
-          <p className="mt-2 text-base leading-7 text-white">{analysis.his || '—'}</p>
         </section>
       </div>
     ) : null}
