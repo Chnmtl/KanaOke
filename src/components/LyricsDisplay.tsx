@@ -197,7 +197,7 @@ export const LyricsDisplay = ({
 
       <div
         ref={scrollContainerRef}
-        className="hide-scrollbar mt-6 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1"
+        className="mt-6 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1"
         onWheel={() => pauseAutoFollow()}
         onTouchMove={() => pauseAutoFollow()}
         onPointerDown={() => pauseAutoFollow()}

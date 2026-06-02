@@ -96,6 +96,7 @@ function App() {
   const resolvedAnalysisLoadSource = isCurrentTrackSelection ? analysisLoadSource : null
   const resolvedIsAnalyzing = isCurrentTrackSelection ? isAnalyzing : false
   const currentTrackId = player?.id ?? null
+  const showNowPlaying = false
 
   const cachedAnalysisByLineId = useMemo(() => {
     const cachedAnalyses = new Map<string, AnalysisResult>()
@@ -137,12 +138,11 @@ function App() {
     const trackId = player?.id ?? ''
     const lineContext = {
       artistName: player?.artist ?? null,
-      fullLyrics: lines.map((candidate) => candidate.text).join('\n'),
       lineIndex: lineIndex >= 0 ? lineIndex : 0,
       surroundingLines:
         lineIndex >= 0
           ? lines
-              .slice(Math.max(0, lineIndex - 2), Math.min(lines.length, lineIndex + 3))
+              .slice(Math.max(0, lineIndex - 3), Math.min(lines.length, lineIndex + 4))
               .map((candidate) => candidate.text)
           : [line.text],
       trackName: player?.name ?? null,
@@ -227,7 +227,9 @@ function App() {
     <main className="min-h-screen bg-gray-900 text-gray-100">
       <div className="mx-auto min-h-screen px-4 py-6 sm:px-6 lg:px-8">
         <section className="grid gap-6 xl:h-[calc(100dvh-3rem)] xl:grid-cols-12 xl:overflow-hidden">
-          <div className="flex min-h-0 flex-col gap-6 xl:col-span-10 xl:overflow-hidden">
+          <div
+            className={`flex min-h-0 flex-col gap-6 xl:overflow-hidden ${showNowPlaying ? 'xl:col-span-10' : 'xl:col-span-12'}`}
+          >
             {(spotifyError || lyricsError) && (
               <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
                 {spotifyError ?? lyricsError}
@@ -265,14 +267,16 @@ function App() {
             </div>
           </div>
 
-          <div className="min-h-0 xl:col-span-2 xl:overflow-hidden">
-            <NowPlaying
-              isLoading={isSpotifyLoading}
-              onLogout={logout}
-              track={player}
-              className="h-full"
-            />
-          </div>
+          {showNowPlaying ? (
+            <div className="min-h-0 xl:col-span-2 xl:overflow-hidden">
+              <NowPlaying
+                isLoading={isSpotifyLoading}
+                onLogout={logout}
+                track={player}
+                className="h-full"
+              />
+            </div>
+          ) : null}
         </section>
       </div>
     </main>
