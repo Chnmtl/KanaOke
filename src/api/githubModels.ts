@@ -1,4 +1,5 @@
 import type { AnalysisResult } from '../types'
+import { getGitHubToken } from '../utils/githubToken'
 
 const JAPANESE_TEXT_PATTERN =
   /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/
@@ -75,10 +76,10 @@ export const analyzeJapaneseLine = async (line: string): Promise<AnalysisResult>
     throw new Error('Sadece Japonca satırlar analiz edilebilir.')
   }
 
-  const token = import.meta.env.VITE_GITHUB_TOKEN
+  const token = getGitHubToken()
 
   if (!token) {
-    throw new Error('VITE_GITHUB_TOKEN tanımlı değil. Lütfen .env dosyanızı kontrol edin.')
+    throw new Error('GitHub Models token bulunamadı. Lütfen token alanına tekrar girin.')
   }
 
   try {

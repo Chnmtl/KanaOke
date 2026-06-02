@@ -21,7 +21,7 @@ Spotify'da çalan şarkıyı algılayan, LRCLIB'den senkronize sözleri çeken v
    - GitHub Models API kullanımı için uygun erişime sahip bir Personal Access Token oluştur.
 
 3. **`.env` dosyasını ayarla**
-   - Kök dizinde `.env.example` dosyasını `.env` olarak kopyala ve değerleri doldur.
+   - Kök dizinde `.env.example` dosyasını `.env` olarak kopyala ve Spotify değerlerini doldur.
 
 4. **Bağımlılıkları kur ve çalıştır**
    ```bash
@@ -46,4 +46,4 @@ npm run build
 
 - Public port 5173 adresini aç ve oluşan URL'nin sonuna `/callback` ekleyerek Spotify Redirect URI olarak kaydet.
 - `VITE_SPOTIFY_REDIRECT_URI` değerini bu callback adresiyle eşleştir.
-- `VITE_GITHUB_TOKEN` değerini Codespaces secret ya da `.env` ile sağlayabilirsin.
+- Uygulama açıldıktan sonra GitHub Models token değerini arayüzdeki gizli (password) alana gir.
