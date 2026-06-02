@@ -1,4 +1,5 @@
 export interface SpotifyTrack {
+  albumName?: string
   albumImageUrl?: string
   artist: string
   durationMs: number
@@ -30,8 +31,16 @@ export interface AnalysisWord {
 }
 
 export interface AnalysisResult {
-  his: string
+  baglamNotu: string
   kelimeler: AnalysisWord[]
   romaji: string
   turkce: string
+}
+
+export interface AnalysisContext {
+  artistName?: string | null
+  fullLyrics: string
+  lineIndex: number
+  surroundingLines: string[]
+  trackName?: string | null
 }
