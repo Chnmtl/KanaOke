@@ -1,4 +1,5 @@
 import type { AnalysisContext, AnalysisResult } from '../types'
+import { getGitHubToken } from '../utils/githubToken'
 
 interface GitHubModelsResponse {
   choices?: Array<{
@@ -100,7 +101,9 @@ export const analyzeJapaneseLine = async (
 ): Promise<AnalysisResult> => {
   const analysisApiUrl = import.meta.env.VITE_ANALYSIS_API_URL?.trim()
   const allowInsecureClientToken = import.meta.env.VITE_ALLOW_INSECURE_CLIENT_TOKEN === 'true'
-  const token = import.meta.env.VITE_GITHUB_TOKEN
+  const runtimeToken = getGitHubToken().trim()
+  const envToken = import.meta.env.VITE_GITHUB_TOKEN?.trim() ?? ''
+  const token = runtimeToken || (allowInsecureClientToken ? envToken : '')
   const model = import.meta.env.VITE_GITHUB_MODEL ?? DEFAULT_GITHUB_MODEL
 
   if (analysisApiUrl) {
@@ -138,15 +141,11 @@ export const analyzeJapaneseLine = async (
     return normalizeAnalysisResult(proxyPayload as RawAnalysisPayload)
   }
 
-  if (!allowInsecureClientToken) {
-    throw new Error(
-      'Güvenlik nedeniyle istemcide PAT kullanımı varsayılan olarak kapalıdır. VITE_ANALYSIS_API_URL ile bir backend proxy kullanın.',
-    )
-  }
-
   if (!token) {
     throw new Error(
-      'VITE_GITHUB_TOKEN tanımlı değil. Geçici istemci kullanımı için VITE_ALLOW_INSECURE_CLIENT_TOKEN=true da tanımlanmalı.',
+      allowInsecureClientToken
+        ? 'GitHub Models token bulunamadı. Arayüzden token girin veya .env içindeki VITE_GITHUB_TOKEN değerini kontrol edin.'
+        : 'Analiz için bir backend proxy tanımlayın veya arayüzde GitHub Models token girin.',
     )
   }
 

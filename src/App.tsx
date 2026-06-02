@@ -6,6 +6,8 @@ import { NowPlaying } from './components/NowPlaying'
 import { useLyrics } from './hooks/useLyrics'
 import { useSpotifyPlayer } from './hooks/useSpotifyPlayer'
 import type { AnalysisResult, LyricsLine } from './types'
+import { clearGitHubToken, getGitHubToken, setGitHubToken } from './utils/githubToken'
+
 const ANALYSIS_CACHE_PREFIX = 'japoncaegitim:analysis-cache:v2'
 const ANALYSIS_CACHE_TTL_MS = 14 * 24 * 60 * 60 * 1_000
 
@@ -89,6 +91,9 @@ function App() {
   const [analysisLoadSource, setAnalysisLoadSource] = useState<'cache' | 'api' | null>(null)
   const [analysisCacheRevision, setAnalysisCacheRevision] = useState(0)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [githubTokenInput, setGithubTokenInput] = useState(getGitHubToken())
+  const [hasGitHubToken, setHasGitHubToken] = useState(Boolean(getGitHubToken()))
+  const hasAnalysisProxy = Boolean(import.meta.env.VITE_ANALYSIS_API_URL?.trim())
   const isCurrentTrackSelection = selectedTrackId === (player?.id ?? null)
   const resolvedSelectedLine = isCurrentTrackSelection ? selectedLine : null
   const resolvedAnalysis = isCurrentTrackSelection ? analysis : null
@@ -176,6 +181,26 @@ function App() {
     } finally {
       setIsAnalyzing(false)
     }
+  }
+
+  const handleSaveToken = () => {
+    const sanitizedToken = githubTokenInput.trim()
+
+    if (!sanitizedToken) {
+      setAnalysisError('Boş token kaydedilemez.')
+      return
+    }
+
+    setGitHubToken(sanitizedToken)
+    setHasGitHubToken(true)
+    setAnalysisError(null)
+  }
+
+  const handleClearToken = () => {
+    clearGitHubToken()
+    setGithubTokenInput('')
+    setHasGitHubToken(false)
+    setAnalysisError(null)
   }
 
   if (!isAuthenticated) {
@@ -266,12 +291,53 @@ function App() {
           </div>
 
           <div className="min-h-0 xl:col-span-2 xl:overflow-hidden">
-            <NowPlaying
-              isLoading={isSpotifyLoading}
-              onLogout={logout}
-              track={player}
-              className="h-full"
-            />
+            <div className="flex h-full min-h-0 flex-col gap-6">
+              <section className="rounded-3xl border border-gray-800 bg-gray-950/80 p-5 shadow-xl shadow-black/20">
+                <p className="text-sm uppercase tracking-[0.3em] text-emerald-400">Güvenlik</p>
+                <h2 className="mt-1 text-2xl font-semibold text-white">GitHub Models token</h2>
+                <p className="mt-3 text-sm text-gray-400">
+                  {hasAnalysisProxy
+                    ? 'Backend proxy etkin. İstersen geçici istemci testi için yine de token girebilirsin.'
+                    : 'Proxy yoksa token yalnızca bu tarayıcı oturumu boyunca saklanır ve repoya yazılmaz.'}
+                </p>
+                <div className="mt-4 flex flex-col gap-3">
+                  <input
+                    type="password"
+                    value={githubTokenInput}
+                    onChange={(event) => setGithubTokenInput(event.target.value)}
+                    placeholder="github_pat_..."
+                    autoComplete="off"
+                    className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-400"
+                  />
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={handleSaveToken}
+                      className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-gray-950 transition hover:bg-emerald-400"
+                    >
+                      Kaydet
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleClearToken}
+                      className="rounded-2xl border border-gray-700 px-4 py-3 text-sm font-medium text-gray-200 transition hover:border-red-400 hover:text-white"
+                    >
+                      Sil
+                    </button>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-gray-500">
+                  Durum: {hasAnalysisProxy ? 'Proxy hazır' : hasGitHubToken ? 'Token hazır' : 'Token girilmedi'}
+                </p>
+              </section>
+
+              <NowPlaying
+                isLoading={isSpotifyLoading}
+                onLogout={logout}
+                track={player}
+                className="flex-1"
+              />
+            </div>
           </div>
         </section>
       </div>

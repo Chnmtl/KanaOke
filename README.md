@@ -22,9 +22,9 @@ Spotify'da çalan şarkıyı algılayan, LRCLIB'den senkronize sözleri çeken v
    - Token'ı yalnızca sunucu tarafında tutan bir endpoint kullan (ör. `/api/analyze`).
 
 3. **`.env` dosyasını ayarla**
-   - Kök dizinde `.env.example` dosyasını `.env` olarak kopyala ve değerleri doldur.
+   - Kök dizinde `.env.example` dosyasını `.env` olarak kopyala ve Spotify değerlerini doldur.
    - `VITE_ANALYSIS_API_URL` değerini backend endpoint'ine yönlendir.
-   - `VITE_ALLOW_INSECURE_CLIENT_TOKEN` değerini `false` bırak.
+   - Sadece geçici istemci testi için `VITE_ALLOW_INSECURE_CLIENT_TOKEN=true` ve isteğe bağlı `VITE_GITHUB_TOKEN` kullan.
 
 4. **Bağımlılıkları kur ve çalıştır**
    ```bash
@@ -50,4 +50,5 @@ npm run build
 - Public port 5173 adresini aç ve oluşan URL'nin sonuna `/callback` ekleyerek Spotify Redirect URI olarak kaydet.
 - `VITE_SPOTIFY_REDIRECT_URI` değerini bu callback adresiyle eşleştir.
 - GitHub token'ını istemci `.env` dosyasına koyma; backend tarafında Codespaces secret olarak kullan.
-- Sadece geçici test için `VITE_ALLOW_INSECURE_CLIENT_TOKEN=true` ve `VITE_GITHUB_TOKEN` kullanımı mümkündür (üretimde önerilmez).
+- Backend proxy yoksa uygulama açıldıktan sonra GitHub Models token değerini arayüzdeki gizli alana girerek yalnızca oturum boyunca kullanabilirsin.
+- `.env` içindeki `VITE_GITHUB_TOKEN` değeri sadece geçici istemci testi için ve `VITE_ALLOW_INSECURE_CLIENT_TOKEN=true` ile birlikte kullanılmalıdır.
