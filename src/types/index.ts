@@ -39,7 +39,6 @@ export interface AnalysisResult {
 
 export interface AnalysisContext {
   artistName?: string | null
-  fullLyrics: string
   lineIndex: number
   surroundingLines: string[]
   trackName?: string | null

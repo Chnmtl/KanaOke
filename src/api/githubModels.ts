@@ -1,5 +1,4 @@
 import type { AnalysisContext, AnalysisResult } from '../types'
-import { getGitHubToken } from '../utils/githubToken'
 
 interface GitHubModelsResponse {
   choices?: Array<{
@@ -17,11 +16,20 @@ interface GitHubModelsErrorResponse {
 }
 
 const DEFAULT_GITHUB_MODEL = 'gpt-4.1-mini'
+const ANALYSIS_DEBUG_ENABLED = import.meta.env.VITE_ANALYSIS_DEBUG === 'true'
+
+const logAnalysisDebug = (event: string, payload: Record<string, unknown>) => {
+  if (!ANALYSIS_DEBUG_ENABLED) {
+    return
+  }
+
+  console.info(`[analysis] ${event}`, payload)
+}
 
 const promptForLine = (line: string, context: AnalysisContext) => `Sen bir sarki sozu ogretmenisin. Asagidaki satiri analiz et ve Turkce acikla.
 
 Kurallar:
-- Eger satir Japonca ise romaji alanini doldur, kelime ve kanji detaylarini uygun oldugunda ver.
+- Eger satir Japonca ise doğal bir Turkce ceviri ver, romaji alanini doldur, kelime ve kanji detaylarini uygun oldugunda ver.
 - Eger satir Japonca degilse en azindan dogal bir Turkce ceviri ver.
 - Japonca olmayan satirlarda romaji alanini bos birakabilirsin.
 - Japonca olmayan satirlarda kelimeler alanini bos dizi olarak dondur.
@@ -36,9 +44,6 @@ Satır sırası: ${context.lineIndex + 1}
 
 Çevredeki satırlar:
 ${context.surroundingLines.length > 0 ? context.surroundingLines.map((item, index) => `${index + 1}. ${item}`).join('\n') : 'Yok'}
-
-Tam söz bağlamı:
-${context.fullLyrics}
 
 Şu formatta JSON döndür:
 {
@@ -99,55 +104,102 @@ export const analyzeJapaneseLine = async (
   line: string,
   context: AnalysisContext,
 ): Promise<AnalysisResult> => {
+  const startedAt = Date.now()
   const analysisApiUrl = import.meta.env.VITE_ANALYSIS_API_URL?.trim()
   const allowInsecureClientToken = import.meta.env.VITE_ALLOW_INSECURE_CLIENT_TOKEN === 'true'
-  const runtimeToken = getGitHubToken().trim()
-  const envToken = import.meta.env.VITE_GITHUB_TOKEN?.trim() ?? ''
-  const token = runtimeToken || (allowInsecureClientToken ? envToken : '')
+  const token = import.meta.env.VITE_GITHUB_TOKEN
   const model = import.meta.env.VITE_GITHUB_MODEL ?? DEFAULT_GITHUB_MODEL
 
   if (analysisApiUrl) {
-    const proxyResponse = await fetch(analysisApiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        context,
-        line,
-        model,
-      }),
+    logAnalysisDebug('proxy_request_started', {
+      lineLength: line.length,
+      lineIndex: context.lineIndex,
+      model,
+      surroundingLineCount: context.surroundingLines.length,
+      url: analysisApiUrl,
     })
 
-    if (!proxyResponse.ok) {
-      const proxyError = await proxyResponse.text()
-      const compactProxyError = proxyError.replace(/\s+/g, ' ').trim()
+    try {
+      const proxyResponse = await fetch(analysisApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          context,
+          line,
+          model,
+        }),
+      })
+
+      logAnalysisDebug('proxy_response_received', {
+        durationMs: Date.now() - startedAt,
+        model,
+        status: proxyResponse.status,
+        url: analysisApiUrl,
+      })
+
+      if (!proxyResponse.ok) {
+        const proxyError = await proxyResponse.text()
+        const compactProxyError = proxyError.replace(/\s+/g, ' ').trim()
+        throw new Error(
+          compactProxyError
+            ? `Analiz proxy hatası: ${proxyResponse.status} (${compactProxyError})`
+            : `Analiz proxy hatası: ${proxyResponse.status}`,
+        )
+      }
+
+      const proxyPayload = (await proxyResponse.json()) as
+        | AnalysisResult
+        | { result?: RawAnalysisPayload }
+        | RawAnalysisPayload
+
+      if ('result' in proxyPayload && proxyPayload.result) {
+        return normalizeAnalysisResult(proxyPayload.result)
+      }
+
+      return normalizeAnalysisResult(proxyPayload as RawAnalysisPayload)
+    } catch (error) {
+      logAnalysisDebug('proxy_request_failed', {
+        durationMs: Date.now() - startedAt,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        model,
+        url: analysisApiUrl,
+      })
+
+      if (error instanceof Error) {
+        throw new Error(
+          `Analiz proxy'sine ulasilamadi (${analysisApiUrl}). Proxy sunucusunun calistigini kontrol edin. ${error.message}`,
+          { cause: error },
+        )
+      }
+
       throw new Error(
-        compactProxyError
-          ? `Analiz proxy hatası: ${proxyResponse.status} (${compactProxyError})`
-          : `Analiz proxy hatası: ${proxyResponse.status}`,
+        `Analiz proxy'sine ulasilamadi (${analysisApiUrl}). Proxy sunucusunun calistigini kontrol edin.`,
+        { cause: error },
       )
     }
+  }
 
-    const proxyPayload = (await proxyResponse.json()) as
-      | AnalysisResult
-      | { result?: RawAnalysisPayload }
-      | RawAnalysisPayload
-
-    if ('result' in proxyPayload && proxyPayload.result) {
-      return normalizeAnalysisResult(proxyPayload.result)
-    }
-
-    return normalizeAnalysisResult(proxyPayload as RawAnalysisPayload)
+  if (!allowInsecureClientToken) {
+    throw new Error(
+      'Güvenlik nedeniyle istemcide PAT kullanımı varsayılan olarak kapalıdır. VITE_ANALYSIS_API_URL ile bir backend proxy kullanın.',
+    )
   }
 
   if (!token) {
     throw new Error(
-      allowInsecureClientToken
-        ? 'GitHub Models token bulunamadı. Arayüzden token girin veya .env içindeki VITE_GITHUB_TOKEN değerini kontrol edin.'
-        : 'Analiz için bir backend proxy tanımlayın veya arayüzde GitHub Models token girin.',
+      'VITE_GITHUB_TOKEN tanımlı değil. Geçici istemci kullanımı için VITE_ALLOW_INSECURE_CLIENT_TOKEN=true da tanımlanmalı.',
     )
   }
+
+  logAnalysisDebug('direct_request_started', {
+    lineLength: line.length,
+    lineIndex: context.lineIndex,
+    model,
+    surroundingLineCount: context.surroundingLines.length,
+    url: 'https://models.inference.ai.azure.com/chat/completions',
+  })
 
   try {
     const response = await fetch('https://models.inference.ai.azure.com/chat/completions', {
@@ -161,6 +213,13 @@ export const analyzeJapaneseLine = async (
         model,
         response_format: { type: 'json_object' },
       }),
+    })
+
+    logAnalysisDebug('direct_response_received', {
+      durationMs: Date.now() - startedAt,
+      model,
+      status: response.status,
+      url: 'https://models.inference.ai.azure.com/chat/completions',
     })
 
     if (!response.ok) {
@@ -194,6 +253,13 @@ export const analyzeJapaneseLine = async (
     const parsed = JSON.parse(parseResponseContent(content)) as RawAnalysisPayload
     return normalizeAnalysisResult(parsed)
   } catch (error) {
+    logAnalysisDebug('direct_request_failed', {
+      durationMs: Date.now() - startedAt,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      model,
+      url: 'https://models.inference.ai.azure.com/chat/completions',
+    })
+
     if (error instanceof Error) {
       throw new Error(`Satır analizi başarısız oldu: ${error.message}`, { cause: error })
     }

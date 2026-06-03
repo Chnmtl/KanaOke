@@ -14,21 +14,24 @@ Spotify'da çalan şarkıyı algılayan, LRCLIB'den senkronize sözleri çeken v
 
 1. **Spotify Developer Dashboard**
    - https://developer.spotify.com/dashboard adresinden uygulama oluştur.
-   - Redirect URI olarak yerelde `http://localhost:5173/callback` ekle.
+   - Redirect URI olarak yerelde `http://127.0.0.1:5173/callback` ekle.
    - Codespaces kullanıyorsan ayrıca `https://<codespace-adı>-5173.app.github.dev/callback` biçimindeki URI'yi de ekle.
 
 2. **GitHub Models için backend proxy hazırla (önerilen)**
    - GitHub Models API anahtarını istemciye koyma.
    - Token'ı yalnızca sunucu tarafında tutan bir endpoint kullan (ör. `/api/analyze`).
+   - Bu repo artık yerel geliştirme için `npm run proxy` komutuyla çalışan küçük bir Node proxy içerir.
 
 3. **`.env` dosyasını ayarla**
-   - Kök dizinde `.env.example` dosyasını `.env` olarak kopyala ve Spotify değerlerini doldur.
+   - Kök dizinde `.env.example` dosyasını `.env` olarak kopyala ve değerleri doldur.
    - `VITE_ANALYSIS_API_URL` değerini backend endpoint'ine yönlendir.
-   - Sadece geçici istemci testi için `VITE_ALLOW_INSECURE_CLIENT_TOKEN=true` ve isteğe bağlı `VITE_GITHUB_TOKEN` kullan.
+   - `VITE_ALLOW_INSECURE_CLIENT_TOKEN` değerini `false` bırak.
+   - `GITHUB_MODELS_TOKEN` değerine PAT ekle. `VITE_` öneki kullanma.
 
 4. **Bağımlılıkları kur ve çalıştır**
    ```bash
    npm install
+   npm run proxy
    npm run dev
    ```
 
@@ -40,6 +43,7 @@ Spotify'da çalan şarkıyı algılayan, LRCLIB'den senkronize sözleri çeken v
 ## Geliştirme Komutları
 
 ```bash
+npm run proxy
 npm run dev
 npm run lint
 npm run build
@@ -50,5 +54,17 @@ npm run build
 - Public port 5173 adresini aç ve oluşan URL'nin sonuna `/callback` ekleyerek Spotify Redirect URI olarak kaydet.
 - `VITE_SPOTIFY_REDIRECT_URI` değerini bu callback adresiyle eşleştir.
 - GitHub token'ını istemci `.env` dosyasına koyma; backend tarafında Codespaces secret olarak kullan.
-- Backend proxy yoksa uygulama açıldıktan sonra GitHub Models token değerini arayüzdeki gizli alana girerek yalnızca oturum boyunca kullanabilirsin.
-- `.env` içindeki `VITE_GITHUB_TOKEN` değeri sadece geçici istemci testi için ve `VITE_ALLOW_INSECURE_CLIENT_TOKEN=true` ile birlikte kullanılmalıdır.
+- Sadece geçici test için `VITE_ALLOW_INSECURE_CLIENT_TOKEN=true` ve `VITE_GITHUB_TOKEN` kullanımı mümkündür (üretimde önerilmez).
+
+## Yerel Analiz Proxy'si
+
+- Proxy `http://127.0.0.1:8787/api/analyze` adresinde çalışır.
+- Varsayılan portu değiştirmek için `ANALYSIS_PROXY_PORT` kullan.
+- Proxy `GITHUB_MODELS_TOKEN` değerini `process.env`, `.env.local` veya `.env` içinden okur.
+- Sağlık kontrolü için `http://127.0.0.1:8787/health` adresini açabilirsin.
+
+### Debug Logları
+
+- Tarayıcı tarafında analiz çağrısı loglarını görmek için `VITE_ANALYSIS_DEBUG=true` ayarla.
+- Proxy tarafında model, süre ve durum loglarını görmek için `ANALYSIS_PROXY_DEBUG=true` ayarla.
+- Debug logları hiçbir zaman token değerini yazdırmaz.

@@ -25,7 +25,7 @@ export const AnalysisPanel = ({
   isAnalyzing,
   selectedLine,
 }: AnalysisPanelProps) => (
-  <aside className="hide-scrollbar h-full min-h-0 overflow-y-auto rounded-3xl border border-gray-800 bg-gray-950/80 p-5 shadow-xl shadow-black/20">
+  <aside className="h-full min-h-0 overflow-y-auto rounded-3xl border border-gray-800 bg-gray-950/80 p-5 shadow-xl shadow-black/20">
     <p className="text-sm uppercase tracking-[0.3em] text-emerald-400">Analysis</p>
     <div className="mt-1 flex flex-wrap items-center gap-2">
       <h2 className="text-2xl font-semibold text-white">Satır analizi</h2>

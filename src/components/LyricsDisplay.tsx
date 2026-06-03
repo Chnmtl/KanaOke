@@ -72,34 +72,14 @@ export const LyricsDisplay = ({
   sourceDescription,
 }: LyricsDisplayProps) => {
   const [userWantsEditorOpen, setUserWantsEditorOpen] = useState(false)
-  const [isAutoFollowPaused, setIsAutoFollowPaused] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const lineRefs = useRef<Record<string, HTMLButtonElement | null>>({})
-  const autoFollowTimeoutRef = useRef<number | null>(null)
-
+  const autoFollowPausedUntilRef = useRef(0)
   const pauseAutoFollow = (durationMs = 8_000) => {
-    setIsAutoFollowPaused(true)
-
-    if (autoFollowTimeoutRef.current !== null) {
-      window.clearTimeout(autoFollowTimeoutRef.current)
-    }
-
-    autoFollowTimeoutRef.current = window.setTimeout(() => {
-      setIsAutoFollowPaused(false)
-      autoFollowTimeoutRef.current = null
-    }, durationMs)
+    autoFollowPausedUntilRef.current = Date.now() + durationMs
   }
-
   const isEditingManualLyrics =
     userWantsEditorOpen || isUsingManualLyrics || manualLyricsText.trim().length > 0
-
-  useEffect(() => {
-    return () => {
-      if (autoFollowTimeoutRef.current !== null) {
-        window.clearTimeout(autoFollowTimeoutRef.current)
-      }
-    }
-  }, [])
 
   useEffect(() => {
     if (!hasSyncedLyrics || isLoading || activeLineIndex < 0 || activeLineIndex >= lines.length) {
@@ -119,7 +99,7 @@ export const LyricsDisplay = ({
       return
     }
 
-    if (isAutoFollowPaused) {
+    if (Date.now() < autoFollowPausedUntilRef.current) {
       return
     }
 
@@ -133,7 +113,7 @@ export const LyricsDisplay = ({
       top: targetTop,
       behavior: 'smooth',
     })
-  }, [activeLineIndex, hasSyncedLyrics, isAutoFollowPaused, isLoading, lines])
+  }, [activeLineIndex, hasSyncedLyrics, isLoading, lines])
 
   return (
     <section className="flex h-full min-h-0 flex-col rounded-3xl border border-gray-800 bg-gray-950/80 p-5 shadow-xl shadow-black/20">
@@ -217,7 +197,7 @@ export const LyricsDisplay = ({
 
       <div
         ref={scrollContainerRef}
-        className="hide-scrollbar mt-6 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1"
+        className="mt-6 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1"
         onWheel={() => pauseAutoFollow()}
         onTouchMove={() => pauseAutoFollow()}
         onPointerDown={() => pauseAutoFollow()}
