@@ -29,7 +29,7 @@ const logAnalysisDebug = (event: string, payload: Record<string, unknown>) => {
 const promptForLine = (line: string, context: AnalysisContext) => `Sen bir sarki sozu ogretmenisin. Asagidaki satiri analiz et ve Turkce acikla.
 
 Kurallar:
-- Eger satir Japonca ise romaji alanini doldur, kelime ve kanji detaylarini uygun oldugunda ver.
+- Eger satir Japonca ise doğal bir Turkce ceviri ver, romaji alanini doldur, kelime ve kanji detaylarini uygun oldugunda ver.
 - Eger satir Japonca degilse en azindan dogal bir Turkce ceviri ver.
 - Japonca olmayan satirlarda romaji alanini bos birakabilirsin.
 - Japonca olmayan satirlarda kelimeler alanini bos dizi olarak dondur.
