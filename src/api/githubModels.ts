@@ -26,15 +26,14 @@ const logAnalysisDebug = (event: string, payload: Record<string, unknown>) => {
   console.info(`[analysis] ${event}`, payload)
 }
 
-const promptForLine = (line: string, context: AnalysisContext) => `Sen bir sarki sozu ogretmenisin. Asagidaki satiri analiz et ve Turkce acikla.
+const promptForLine = (line: string, context: AnalysisContext) => `Sen bir şarkı sözü öğretmenisin. Aşağıdaki satırı analiz et ve Türkçe açıkla.
 
 Kurallar:
-- Eger satir Japonca ise doğal bir Turkce ceviri ver, romaji alanini doldur, kelime ve kanji detaylarini uygun oldugunda ver.
-- Eger satir Japonca degilse en azindan dogal bir Turkce ceviri ver.
-- Japonca olmayan satirlarda romaji alanini bos birakabilirsin.
-- Japonca olmayan satirlarda kelimeler alanini bos dizi olarak dondur.
-- Her durumda gecerli JSON dondur.
-
+- Eğer satır Japonca ise doğal bir Türkçe çeviri ver, romaji alanını doldur, kelime ve kanji detaylarını uygun olduğunda ver.
+- Eğer satır Japonca değilse en azından doğal bir Türkçe çeviri ver.
+- Japonca olmayan satırlarda romaji alanını boş bırakabilirsin.
+- Japonca olmayan satırlarda kelimeler alanını boş dizi olarak döndür.
+- Her durumda geçerli JSON döndür.
 
 Satır: "${line}"
 
@@ -65,28 +64,46 @@ ${context.surroundingLines.length > 0 ? context.surroundingLines.map((item, inde
   ]
 }`
 
-type RawAnalysisPayload = Partial<AnalysisResult> & { his?: string }
+interface RawKanji {
+  aciklama?: string
+  karakter?: string
+  kunyomi?: string
+  onyomi?: string
+  radikal?: string
+}
+
+interface RawWord {
+  anlam?: string
+  japonca?: string
+  kanji?: RawKanji | null
+  romaji?: string
+}
+
+interface RawAnalysisPayload {
+  kelimeler?: RawWord[]
+  romaji?: string
+  turkce?: string
+}
 
 const normalizeAnalysisResult = (payload: RawAnalysisPayload): AnalysisResult => ({
-  baglamNotu: payload.baglamNotu?.trim() ?? payload.his?.trim() ?? '',
-  kelimeler: Array.isArray(payload.kelimeler)
+  romaji: payload.romaji?.trim() ?? '',
+  translation: payload.turkce?.trim() ?? '',
+  words: Array.isArray(payload.kelimeler)
     ? payload.kelimeler.map((word) => ({
-        anlam: word.anlam?.trim() ?? '',
-        japonca: word.japonca?.trim() ?? '',
+        japanese: word.japonca?.trim() ?? '',
         kanji: word.kanji
           ? {
-              aciklama: word.kanji.aciklama?.trim() ?? '',
-              karakter: word.kanji.karakter?.trim() ?? '',
+              character: word.kanji.karakter?.trim() ?? '',
+              explanation: word.kanji.aciklama?.trim() ?? '',
               kunyomi: word.kanji.kunyomi?.trim() ?? '',
               onyomi: word.kanji.onyomi?.trim() ?? '',
-              radikal: word.kanji.radikal?.trim() ?? '',
+              radical: word.kanji.radikal?.trim() ?? '',
             }
           : null,
+        meaning: word.anlam?.trim() ?? '',
         romaji: word.romaji?.trim() ?? '',
       }))
     : [],
-  romaji: payload.romaji?.trim() ?? '',
-  turkce: payload.turkce?.trim() ?? '',
 })
 
 const parseResponseContent = (content: string | Array<{ text?: string; type?: string }>) => {
@@ -150,7 +167,6 @@ export const analyzeJapaneseLine = async (
       }
 
       const proxyPayload = (await proxyResponse.json()) as
-        | AnalysisResult
         | { result?: RawAnalysisPayload }
         | RawAnalysisPayload
 

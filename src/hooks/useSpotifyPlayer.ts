@@ -33,7 +33,8 @@ const VERIFIER_STORAGE_KEY = 'spotify_pkce_verifier'
 const POLL_INTERVAL_MS = 1_000
 const LOCAL_PROGRESS_TICK_MS = 200
 const TOKEN_REFRESH_BUFFER_MS = 60_000
-const SPOTIFY_SCOPES = 'user-read-currently-playing user-read-playback-state'
+const SPOTIFY_SCOPES =
+  'user-read-currently-playing user-read-playback-state user-modify-playback-state'
 
 const toBase64Url = (value: ArrayBuffer | Uint8Array) => {
   const bytes = value instanceof Uint8Array ? value : new Uint8Array(value)
@@ -245,6 +246,103 @@ export const useSpotifyPlayer = () => {
     }
   }, [ensureAccessToken, refreshAccessToken, requestCurrentlyPlaying])
 
+  const sendPlayerCommand = useCallback(
+    async (method: 'PUT' | 'POST', path: string, query?: Record<string, string>) => {
+      const accessToken = await ensureAccessToken()
+
+      if (!accessToken) {
+        setError('Spotify oturumu bulunamadı. Lütfen yeniden giriş yapın.')
+        return
+      }
+
+      const queryString = query ? `?${new URLSearchParams(query).toString()}` : ''
+      const url = `https://api.spotify.com/v1/me/player${path}${queryString}`
+
+      const runRequest = (token: string) =>
+        fetch(url, {
+          method,
+          headers: {
+            Authorization: 'Bearer ' + token,
+          },
+        })
+
+      try {
+        let response = await runRequest(accessToken)
+
+        if (response.status === 401) {
+          response = await runRequest(await refreshAccessToken())
+        }
+
+        if (response.status === 403) {
+          setError(
+            'Spotify oynatma kontrolü reddedildi. Premium hesap gerekir ve yeni izin için yeniden giriş yapın.',
+          )
+          return
+        }
+
+        if (response.status === 404) {
+          setError('Aktif Spotify cihazı bulunamadı. Spotify uygulamasında bir parça başlatın.')
+          return
+        }
+
+        if (!response.ok && response.status !== 204) {
+          throw new Error(`Spotify komutu başarısız oldu: ${response.status}`)
+        }
+
+        setError(null)
+      } catch (error) {
+        setError(
+          error instanceof Error ? error.message : 'Spotify komutu gönderilemedi.',
+        )
+      }
+    },
+    [ensureAccessToken, refreshAccessToken],
+  )
+
+  const togglePlayback = useCallback(async () => {
+    const shouldPause = player?.isPlaying ?? false
+
+    // Optimistically flip state for instant feedback; the next poll reconciles.
+    setPlayer((currentPlayer) =>
+      currentPlayer ? { ...currentPlayer, isPlaying: !shouldPause } : currentPlayer,
+    )
+    lastProgressTickAtRef.current = Date.now()
+
+    await sendPlayerCommand('PUT', shouldPause ? '/pause' : '/play')
+  }, [player?.isPlaying, sendPlayerCommand])
+
+  const playNext = useCallback(async () => {
+    await sendPlayerCommand('POST', '/next')
+    window.setTimeout(() => {
+      void fetchCurrentlyPlaying()
+    }, 350)
+  }, [fetchCurrentlyPlaying, sendPlayerCommand])
+
+  const playPrevious = useCallback(async () => {
+    await sendPlayerCommand('POST', '/previous')
+    window.setTimeout(() => {
+      void fetchCurrentlyPlaying()
+    }, 350)
+  }, [fetchCurrentlyPlaying, sendPlayerCommand])
+
+  const seekTo = useCallback(
+    async (positionMs: number) => {
+      const clampedPosition = Math.max(
+        0,
+        Math.min(player?.durationMs ?? positionMs, Math.round(positionMs)),
+      )
+
+      // Optimistically move the progress so the bar reflects the seek instantly.
+      setPlayer((currentPlayer) =>
+        currentPlayer ? { ...currentPlayer, progressMs: clampedPosition } : currentPlayer,
+      )
+      lastProgressTickAtRef.current = Date.now()
+
+      await sendPlayerCommand('PUT', '/seek', { position_ms: String(clampedPosition) })
+    },
+    [player?.durationMs, sendPlayerCommand],
+  )
+
   useEffect(() => {
     const bootstrapSpotify = async () => {
       if (!isConfigured) {
@@ -402,6 +500,10 @@ export const useSpotifyPlayer = () => {
     isLoading,
     login,
     logout,
+    playNext,
+    playPrevious,
     player,
+    seekTo,
+    togglePlayback,
   }
 }

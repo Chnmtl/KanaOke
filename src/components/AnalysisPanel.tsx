@@ -88,7 +88,7 @@ export const AnalysisPanel = ({
                 <span>Türkçe</span>
                 <InfoBubble title="Satırın bağlama göre Türkçe anlamı veya kısa çevirisi." />
               </div>
-              <p className="mt-1 text-sm text-white">{analysis.turkce || '—'}</p>
+              <p className="mt-1 text-sm text-white">{analysis.translation || '—'}</p>
             </div>
           </div>
         </section>
@@ -96,19 +96,19 @@ export const AnalysisPanel = ({
         <section>
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-lg font-semibold text-white">Kelime ve kanji detayları</h3>
-            <span className="text-sm text-gray-500">{analysis.kelimeler.length} kart</span>
+            <span className="text-sm text-gray-500">{analysis.words.length} kart</span>
           </div>
           <div className="mt-3 grid gap-3">
-            {analysis.kelimeler.length > 0 ? (
-              analysis.kelimeler.map((word, index) => (
-                <article key={`${word.japonca}-${index}`} className="rounded-2xl border border-gray-800 bg-gray-900/65 p-3">
+            {analysis.words.length > 0 ? (
+              analysis.words.map((word, index) => (
+                <article key={index} className="rounded-2xl border border-gray-800 bg-gray-900/65 p-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="jp-text text-lg text-white">{word.japonca || '—'}</p>
+                      <p className="jp-text text-lg text-white">{word.japanese || '—'}</p>
                       <p className="mt-0.5 text-xs text-emerald-300">{word.romaji || '—'}</p>
                     </div>
                     <span className="rounded-full bg-gray-800 px-3 py-1 text-xs text-gray-400">
-                      {word.anlam || 'Anlam yok'}
+                      {word.meaning || 'Anlam yok'}
                     </span>
                   </div>
 
@@ -120,7 +120,7 @@ export const AnalysisPanel = ({
                           <InfoBubble title="Kanji ise karakterin kendisi; kana ise ilgili yazım." />
                         </dt>
                         <dd className="jp-text mt-2 text-lg text-white">
-                          {word.kanji.karakter || '—'}
+                          {word.kanji.character || '—'}
                         </dd>
                       </div>
                       <div className="rounded-2xl bg-gray-950/70 p-3">
@@ -128,7 +128,7 @@ export const AnalysisPanel = ({
                           <span>Radikal</span>
                           <InfoBubble title="Karakterin anlam taşımaya yardımcı temel parçası." />
                         </dt>
-                        <dd className="mt-2 text-sm text-white">{word.kanji.radikal || '—'}</dd>
+                        <dd className="mt-2 text-sm text-white">{word.kanji.radical || '—'}</dd>
                       </div>
                       <div className="rounded-2xl bg-gray-950/70 p-3">
                         <dt className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-gray-500">
@@ -150,7 +150,7 @@ export const AnalysisPanel = ({
                           <InfoBubble title="Karakter veya kelimenin kısa anlam notu." />
                         </dt>
                         <dd className="mt-2 text-sm leading-6 text-gray-200">
-                          {word.kanji.aciklama || '—'}
+                          {word.kanji.explanation || '—'}
                         </dd>
                       </div>
                     </dl>

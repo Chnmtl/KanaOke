@@ -13,6 +13,9 @@ dist-ssr
 .env
 *.local
 
+# kuromoji dictionary copied from node_modules by scripts/copy-kuromoji-dict.mjs
+public/dict
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

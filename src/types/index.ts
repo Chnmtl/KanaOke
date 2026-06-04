@@ -16,25 +16,24 @@ export interface LyricsLine {
 }
 
 export interface KanjiDetail {
-  aciklama: string
-  karakter: string
+  character: string
+  explanation: string
   kunyomi: string
   onyomi: string
-  radikal: string
+  radical: string
 }
 
 export interface AnalysisWord {
-  anlam: string
-  japonca: string
+  japanese: string
   kanji?: KanjiDetail | null
+  meaning: string
   romaji: string
 }
 
 export interface AnalysisResult {
-  baglamNotu: string
-  kelimeler: AnalysisWord[]
   romaji: string
-  turkce: string
+  translation: string
+  words: AnalysisWord[]
 }
 
 export interface AnalysisContext {

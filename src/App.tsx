@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
 import { analyzeJapaneseLine } from './api/githubModels'
 import { AnalysisPanel } from './components/AnalysisPanel'
+import { CompactPlayer } from './components/CompactPlayer'
 import { LyricsDisplay } from './components/LyricsDisplay'
 import { NowPlaying } from './components/NowPlaying'
 import { useLyrics } from './hooks/useLyrics'
 import { useSpotifyPlayer } from './hooks/useSpotifyPlayer'
 import type { AnalysisResult, LyricsLine } from './types'
-const ANALYSIS_CACHE_PREFIX = 'japoncaegitim:analysis-cache:v2'
+const ANALYSIS_CACHE_PREFIX = 'japoncaegitim:analysis-cache:v3'
 const ANALYSIS_CACHE_TTL_MS = 14 * 24 * 60 * 60 * 1_000
 
 const normalizeAnalysisLineText = (lineText: string) =>
@@ -62,6 +63,10 @@ function App() {
     isLoading: isSpotifyLoading,
     login,
     logout,
+    playNext,
+    playPrevious,
+    seekTo,
+    togglePlayback,
   } = useSpotifyPlayer()
   const {
     activeLineIndex,
@@ -89,6 +94,9 @@ function App() {
   const [analysisLoadSource, setAnalysisLoadSource] = useState<'cache' | 'api' | null>(null)
   const [analysisCacheRevision, setAnalysisCacheRevision] = useState(0)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  // Below md the horizontal NowPlaying top row is hidden in favor of the fixed
+  // bottom CompactPlayer, which can be toggled between compact and detailed.
+  const [isBottomPlayerExpanded, setIsBottomPlayerExpanded] = useState(false)
   const isCurrentTrackSelection = selectedTrackId === (player?.id ?? null)
   const resolvedSelectedLine = isCurrentTrackSelection ? selectedLine : null
   const resolvedAnalysis = isCurrentTrackSelection ? analysis : null
@@ -96,7 +104,10 @@ function App() {
   const resolvedAnalysisLoadSource = isCurrentTrackSelection ? analysisLoadSource : null
   const resolvedIsAnalyzing = isCurrentTrackSelection ? isAnalyzing : false
   const currentTrackId = player?.id ?? null
-  const showNowPlaying = false
+  const miniPlayerProgressRatio =
+    player && player.durationMs > 0
+      ? Math.min(100, (player.progressMs / player.durationMs) * 100)
+      : 0
 
   const cachedAnalysisByLineId = useMemo(() => {
     const cachedAnalyses = new Map<string, AnalysisResult>()
@@ -224,61 +235,72 @@ function App() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-900 text-gray-100">
-      <div className="mx-auto min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-        <section className="grid gap-6 xl:h-[calc(100dvh-3rem)] xl:grid-cols-12 xl:overflow-hidden">
-          <div
-            className={`flex min-h-0 flex-col gap-6 xl:overflow-hidden ${showNowPlaying ? 'xl:col-span-10' : 'xl:col-span-12'}`}
-          >
-            {(spotifyError || lyricsError) && (
-              <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                {spotifyError ?? lyricsError}
-              </div>
-            )}
-
-            <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-5 xl:overflow-hidden">
-              <div className="min-h-0 lg:col-span-3">
-                <LyricsDisplay
-                  activeLineIndex={activeLineIndex}
-                  clearManualLyricsText={clearManualLyricsText}
-                  hasSyncedLyrics={hasSyncedLyrics}
-                  isLoading={isLyricsLoading}
-                  cachedAnalysisByLineId={cachedAnalysisByLineId}
-                  cachedAnalysisLineIds={cachedAnalysisLineIds}
-                  lines={lines}
-                  manualLyricsText={manualLyricsText}
-                  onSelectLine={handleSelectLine}
-                  onManualLyricsChange={setManualLyricsText}
-                  onRefreshLyrics={refreshLyrics}
-                  selectedLineId={resolvedSelectedLine?.id ?? null}
-                  isUsingManualLyrics={isUsingManualLyrics}
-                  sourceDescription={sourceDescription}
-                />
-              </div>
-              <div className="min-h-0 lg:col-span-2">
-                <AnalysisPanel
-                  analysis={resolvedAnalysis}
-                  error={resolvedAnalysisError}
-                  isAnalyzing={resolvedIsAnalyzing}
-                  analysisSource={resolvedAnalysisLoadSource}
-                  selectedLine={resolvedSelectedLine}
-                />
-              </div>
-            </div>
+    <main className="min-h-screen overflow-x-hidden bg-gray-900 text-gray-100">
+      <div className="mx-auto min-h-screen px-4 py-6 pb-24 sm:px-6 md:pb-6 lg:px-8">
+        <section className="flex flex-col gap-6 md:h-[calc(100dvh-3rem)] md:overflow-hidden">
+          <div className="hidden shrink-0 md:block">
+            <NowPlaying
+              isLoading={isSpotifyLoading}
+              onLogout={logout}
+              onNext={playNext}
+              onPrevious={playPrevious}
+              onSeek={seekTo}
+              onTogglePlayback={togglePlayback}
+              track={player}
+            />
           </div>
 
-          {showNowPlaying ? (
-            <div className="min-h-0 xl:col-span-2 xl:overflow-hidden">
-              <NowPlaying
-                isLoading={isSpotifyLoading}
-                onLogout={logout}
-                track={player}
-                className="h-full"
+          {(spotifyError || lyricsError) && (
+            <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+              {spotifyError ?? lyricsError}
+            </div>
+          )}
+
+          <div className="grid min-h-0 flex-1 gap-6 md:grid-cols-2 md:overflow-hidden">
+            <div className="h-[65dvh] min-h-0 md:h-auto">
+              <LyricsDisplay
+                activeLineIndex={activeLineIndex}
+                clearManualLyricsText={clearManualLyricsText}
+                hasSyncedLyrics={hasSyncedLyrics}
+                isLoading={isLyricsLoading}
+                cachedAnalysisByLineId={cachedAnalysisByLineId}
+                cachedAnalysisLineIds={cachedAnalysisLineIds}
+                lines={lines}
+                manualLyricsText={manualLyricsText}
+                onSelectLine={handleSelectLine}
+                onManualLyricsChange={setManualLyricsText}
+                onRefreshLyrics={refreshLyrics}
+                selectedLineId={resolvedSelectedLine?.id ?? null}
+                isUsingManualLyrics={isUsingManualLyrics}
+                sourceDescription={sourceDescription}
               />
             </div>
-          ) : null}
+            <div className="h-[55dvh] min-h-0 md:h-auto">
+              <AnalysisPanel
+                analysis={resolvedAnalysis}
+                error={resolvedAnalysisError}
+                isAnalyzing={resolvedIsAnalyzing}
+                analysisSource={resolvedAnalysisLoadSource}
+                selectedLine={resolvedSelectedLine}
+              />
+            </div>
+          </div>
         </section>
       </div>
+
+      <CompactPlayer
+        className="fixed bottom-0 left-0 z-50 w-screen md:hidden"
+        isExpanded={isBottomPlayerExpanded}
+        isLoading={isSpotifyLoading}
+        onLogout={logout}
+        onNext={playNext}
+        onPrevious={playPrevious}
+        onSeek={seekTo}
+        onToggleExpand={() => setIsBottomPlayerExpanded((value) => !value)}
+        onTogglePlayback={togglePlayback}
+        progressRatio={miniPlayerProgressRatio}
+        track={player}
+      />
     </main>
   )
 }

@@ -11,8 +11,7 @@ import {
   SparkleIcon,
   TrashIcon,
 } from './icons'
-import type { AnalysisResult } from '../types'
-import type { LyricsLine } from '../types'
+import type { AnalysisResult, LyricsLine } from '../types'
 
 const JAPANESE_TEXT_PATTERN = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/
 
@@ -269,8 +268,8 @@ export const LyricsDisplay = ({
                         <span className="ml-2 text-sm italic text-gray-400">({cachedAnalysis.romaji})</span>
                       ) : null}
                     </p>
-                    {cachedAnalysis?.turkce ? (
-                      <p className="mt-2 text-sm leading-6 text-gray-300">{cachedAnalysis.turkce}</p>
+                    {cachedAnalysis?.translation ? (
+                      <p className="mt-2 text-sm leading-6 text-gray-300">{cachedAnalysis.translation}</p>
                     ) : null}
                   </div>
                   <span

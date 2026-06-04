@@ -102,3 +102,42 @@ export const LogoutIcon = (props: IconProps) => (
     <path d="M21 12H9" />
   </svg>
 )
+
+export const ChevronDownIcon = (props: IconProps) => (
+  <svg {...baseProps} {...props}>
+    <path d="m6 9 6 6 6-6" />
+  </svg>
+)
+
+export const ChevronUpIcon = (props: IconProps) => (
+  <svg {...baseProps} {...props}>
+    <path d="m18 15-6-6-6 6" />
+  </svg>
+)
+
+export const PlayIcon = (props: IconProps) => (
+  <svg {...baseProps} {...props}>
+    <path d="M7 5.5v13l11-6.5-11-6.5Z" fill="currentColor" stroke="none" />
+  </svg>
+)
+
+export const PauseIcon = (props: IconProps) => (
+  <svg {...baseProps} {...props}>
+    <path d="M8 5v14" />
+    <path d="M16 5v14" />
+  </svg>
+)
+
+export const NextIcon = (props: IconProps) => (
+  <svg {...baseProps} {...props}>
+    <path d="M6 5.5v13l9-6.5-9-6.5Z" fill="currentColor" stroke="none" />
+    <path d="M18 5v14" />
+  </svg>
+)
+
+export const PreviousIcon = (props: IconProps) => (
+  <svg {...baseProps} {...props}>
+    <path d="M18 5.5v13l-9-6.5 9-6.5Z" fill="currentColor" stroke="none" />
+    <path d="M6 5v14" />
+  </svg>
+)
