@@ -11,6 +11,7 @@ export {
   ChevronDownIcon,
   ChevronUpIcon,
   MinusIcon as DotIcon,
+  LanguageIcon as GlobeIcon,
 } from '@heroicons/react/24/outline'
 
 export {

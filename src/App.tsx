@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { analyzeJapaneseLine } from './api/githubModels'
 import { AnalysisPanel } from './components/AnalysisPanel'
 import { CompactPlayer } from './components/CompactPlayer'
+import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { LyricsDisplay } from './components/LyricsDisplay'
 import { NowPlaying } from './components/NowPlaying'
 import { useLyrics } from './hooks/useLyrics'
@@ -56,6 +58,7 @@ const writeAnalysisCache = (trackId: string, lineText: string, analysis: Analysi
 }
 
 function App() {
+  const { t } = useTranslation()
   const {
     player,
     error: spotifyError,
@@ -186,7 +189,7 @@ function App() {
     } catch (error) {
       setAnalysisLoadSource(null)
       setAnalysisError(
-        error instanceof Error ? error.message : 'Analiz sırasında beklenmeyen bir hata oluştu.',
+        error instanceof Error ? error.message : t('analysis.unexpectedError'),
       )
     } finally {
       setIsAnalyzing(false)
@@ -197,15 +200,17 @@ function App() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-gray-900 px-4 py-10 text-gray-100">
         <section className="w-full max-w-2xl rounded-3xl border border-gray-800 bg-gray-950/80 p-8 shadow-2xl shadow-black/30 backdrop-blur">
-          <p className="text-sm uppercase tracking-[0.3em] text-emerald-400">
-            Japonca Şarkı Öğrenme
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <p className="text-sm uppercase tracking-[0.3em] text-emerald-400">
+              {t('auth.eyebrow')}
+            </p>
+            <LanguageSwitcher />
+          </div>
           <h1 className="mt-4 text-4xl font-semibold text-white">
-            Spotify ile giriş yap ve şarkı sözlerini anlık incele
+            {t('auth.heading')}
           </h1>
           <p className="mt-4 text-lg text-gray-300">
-            Spotify&apos;da çalan parçayı algıla, LRCLIB senkronize sözlerini takip et ve
-            Japonca satırları sağ panelde analiz et.
+            {t('auth.subtitle')}
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <button
@@ -214,18 +219,18 @@ function App() {
               disabled={isSpotifyLoading}
               className="rounded-full bg-emerald-500 px-6 py-3 font-semibold text-gray-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-emerald-800"
             >
-              {isSpotifyLoading ? 'Spotify bağlanıyor...' : 'Spotify ile giriş yap'}
+              {isSpotifyLoading ? t('auth.signingIn') : t('auth.signIn')}
             </button>
           </div>
           <ul className="mt-8 grid gap-3 text-sm text-gray-400 sm:grid-cols-3">
             <li className="rounded-2xl border border-gray-800 bg-gray-900/70 p-4">
-              OAuth 2.0 PKCE ile güvenli istemci girişi
+              {t('auth.featureSecureLogin')}
             </li>
             <li className="rounded-2xl border border-gray-800 bg-gray-900/70 p-4">
-              LRCLIB ile senkronize karaoke takibi
+              {t('auth.featureKaraoke')}
             </li>
             <li className="rounded-2xl border border-gray-800 bg-gray-900/70 p-4">
-              GitHub Models API ile romaji ve Türkçe analiz
+              {t('auth.featureAnalysis')}
             </li>
           </ul>
           {spotifyError ? (

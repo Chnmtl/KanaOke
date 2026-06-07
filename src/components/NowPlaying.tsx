@@ -1,4 +1,5 @@
 import type { KeyboardEvent, MouseEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -9,6 +10,7 @@ import {
   PlayIcon,
   PreviousIcon,
 } from './icons'
+import { LanguageSwitcher } from './LanguageSwitcher'
 import type { SpotifyTrack } from '../types'
 import { useRomaji } from '../hooks/useRomaji'
 import { formatDuration } from '../utils/formatDuration'
@@ -44,13 +46,14 @@ export const NowPlaying = ({
   onTogglePlayback,
   track,
 }: NowPlayingProps) => {
+  const { t } = useTranslation()
   const durationMs = track?.durationMs ?? 0
   const progressRatio =
     track && durationMs > 0 ? Math.min(100, (track.progressMs / durationMs) * 100) : 0
-  const trackName = track?.name ?? (isLoading ? 'Spotify verisi yükleniyor...' : 'Çalan şarkı yok')
+  const trackName =
+    track?.name ?? (isLoading ? t('player.loadingSpotify') : t('player.noTrack'))
   const artistName =
-    track?.artist ??
-    (isLoading ? 'Bağlantı kuruluyor...' : 'Spotify oynatıcısında aktif parça bulunamadı.')
+    track?.artist ?? (isLoading ? t('player.connecting') : t('player.noActiveTrack'))
   const nameRomaji = useRomaji(track?.name)
   const artistRomaji = useRomaji(track?.artist)
   const albumRomaji = useRomaji(track?.albumName)
@@ -87,7 +90,7 @@ export const NowPlaying = ({
     <div
       role="slider"
       tabIndex={hasTrack ? 0 : -1}
-      aria-label="Şarkı konumu"
+      aria-label={t('player.seek')}
       aria-valuemin={0}
       aria-valuemax={durationMs}
       aria-valuenow={track?.progressMs ?? 0}
@@ -109,8 +112,8 @@ export const NowPlaying = ({
         onClick={onPrevious}
         disabled={!hasTrack}
         className={controlButtonClass}
-        title="Önceki parça"
-        aria-label="Önceki parça"
+        title={t('player.previous')}
+        aria-label={t('player.previous')}
       >
         <PreviousIcon className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -119,8 +122,8 @@ export const NowPlaying = ({
         onClick={onTogglePlayback}
         disabled={!hasTrack}
         className={controlButtonClass}
-        title={isPlaying ? 'Duraklat' : 'Oynat'}
-        aria-label={isPlaying ? 'Duraklat' : 'Oynat'}
+        title={isPlaying ? t('player.pause') : t('player.play')}
+        aria-label={isPlaying ? t('player.pause') : t('player.play')}
       >
         {isPlaying ? (
           <PauseIcon className="h-4 w-4" aria-hidden="true" />
@@ -133,8 +136,8 @@ export const NowPlaying = ({
         onClick={onNext}
         disabled={!hasTrack}
         className={controlButtonClass}
-        title="Sonraki parça"
-        aria-label="Sonraki parça"
+        title={t('player.next')}
+        aria-label={t('player.next')}
       >
         <NextIcon className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -149,7 +152,7 @@ export const NowPlaying = ({
         {track?.albumImageUrl ? (
           <img
             src={track.albumImageUrl}
-            alt={`${track.name} kapak görseli`}
+            alt={t('player.coverAlt', { name: track.name })}
             className="h-14 w-14 shrink-0 rounded-xl object-cover"
           />
         ) : (
@@ -171,8 +174,8 @@ export const NowPlaying = ({
             type="button"
             onClick={onToggleMinimize}
             className={`${toggleButtonClass} h-10 w-10`}
-            title="Büyüt"
-            aria-label="Oynatıcıyı büyüt"
+            title={t('player.maximize')}
+            aria-label={t('player.maximizePlayer')}
             aria-expanded={false}
           >
             <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
@@ -189,7 +192,7 @@ export const NowPlaying = ({
       {track?.albumImageUrl ? (
         <img
           src={track.albumImageUrl}
-          alt={`${track.name} kapak görseli`}
+          alt={t('player.coverAlt', { name: track.name })}
           className="h-40 w-40 shrink-0 rounded-2xl object-cover sm:h-44 sm:w-44"
         />
       ) : (
@@ -226,23 +229,24 @@ export const NowPlaying = ({
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
+            <LanguageSwitcher />
             <button
               type="button"
               onClick={onLogout}
               className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#27365A] bg-[#09142A]/90 px-3.5 py-2 text-sm font-medium text-gray-200 transition hover:border-red-400 hover:bg-red-500 hover:text-white hover:shadow-md hover:shadow-red-500/30"
-              title="Spotify oturumunu kapat"
-              aria-label="Çıkış yap"
+              title={t('player.logoutTitle')}
+              aria-label={t('player.logout')}
             >
               <LogoutIcon className="h-4 w-4" aria-hidden="true" />
-              <span>Çıkış yap</span>
+              <span>{t('player.logout')}</span>
             </button>
             {onToggleMinimize ? (
               <button
                 type="button"
                 onClick={onToggleMinimize}
                 className={`${toggleButtonClass} h-10 w-10`}
-                title="Küçült"
-                aria-label="Oynatıcıyı küçült"
+                title={t('player.minimize')}
+                aria-label={t('player.minimizePlayer')}
                 aria-expanded={true}
               >
                 <ChevronUpIcon className="h-4 w-4" aria-hidden="true" />

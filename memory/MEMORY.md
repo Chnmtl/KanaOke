@@ -1,0 +1,1 @@
+- [Localization scope](localization-scope.md) — UI language only; analysis stays Japanese→Turkish

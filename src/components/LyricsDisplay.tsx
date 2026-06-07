@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   BoltIcon,
   CheckIcon,
@@ -34,9 +35,6 @@ interface LyricsDisplayProps {
   selectedLineId: string | null
   sourceDescription: string | null
 }
-
-const INFO_BADGE_COPY =
-  'Bu satırda Japonca karakter yok; yine de referans olarak gösterilir ve dil analizi yapılmaz.'
 
 const pillClassName =
   'inline-flex items-center gap-2 rounded-full border border-gray-800 bg-gray-900 px-3 py-1.5 text-xs text-gray-300 transition hover:border-emerald-400/50 hover:text-white'
@@ -129,6 +127,7 @@ export const LyricsDisplay = ({
   selectedLineId,
   sourceDescription,
 }: LyricsDisplayProps) => {
+  const { t } = useTranslation()
   const [userWantsEditorOpen, setUserWantsEditorOpen] = useState(false)
   const [showSavedOnly, setShowSavedOnly] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
@@ -178,17 +177,13 @@ export const LyricsDisplay = ({
   return (
     <section className="flex h-full min-h-0 flex-col rounded-3xl border border-gray-800 bg-gray-950/80 p-5 shadow-xl shadow-black/20">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-semibold text-white">Karaoke görünümü</h2>
+        <h2 className="text-2xl font-semibold text-white">{t('lyrics.title')}</h2>
         <div className="flex items-center gap-1.5">
           <HeaderAction
             icon={hasSyncedLyrics ? MusicNoteIcon : LinesIcon}
             tone={hasSyncedLyrics ? 'emerald' : 'neutral'}
-            ariaLabel="Söz senkronizasyon durumu"
-            tooltip={
-              hasSyncedLyrics
-                ? 'Senkronize sözler: şarkıyla zaman uyumlu, otomatik ilerler.'
-                : 'Düz söz: zaman bilgisi yok, otomatik ilerlemez.'
-            }
+            ariaLabel={t('lyrics.syncStatus')}
+            tooltip={hasSyncedLyrics ? t('lyrics.syncedTooltip') : t('lyrics.plainTooltip')}
           />
           {cachedAnalysisLineIds.size > 0 ? (
             <HeaderAction
@@ -197,34 +192,34 @@ export const LyricsDisplay = ({
               count={cachedAnalysisLineIds.size}
               active={filterSavedOnly}
               onClick={() => setShowSavedOnly((currentValue) => !currentValue)}
-              ariaLabel={filterSavedOnly ? 'Tüm satırları göster' : 'Sadece kayıtlı satırları göster'}
+              ariaLabel={filterSavedOnly ? t('lyrics.showAll') : t('lyrics.showSavedOnly')}
               tooltip={
                 filterSavedOnly
-                  ? 'Filtre açık: yalnızca kayıtlı satırlar gösteriliyor. Tümünü görmek için tıkla.'
-                  : `${cachedAnalysisLineIds.size} satırın analizi kayıtlı. Yalnızca bunları görmek için tıkla.`
+                  ? t('lyrics.filterOnTooltip')
+                  : t('lyrics.savedCountTooltip', { count: cachedAnalysisLineIds.size })
               }
             />
           ) : null}
           {sourceDescription ? (
             <HeaderAction
               icon={InfoIcon}
-              ariaLabel="Söz kaynağı"
+              ariaLabel={t('lyrics.source')}
               tooltip={sourceDescription}
             />
           ) : null}
           <HeaderAction
             icon={RefreshIcon}
             onClick={onRefreshLyrics}
-            ariaLabel="Sözleri yenile"
-            tooltip="Sözleri yeniden getir"
+            ariaLabel={t('lyrics.refresh')}
+            tooltip={t('lyrics.refreshTooltip')}
           />
           <HeaderAction
             icon={isEditingManualLyrics ? CloseIcon : EditIcon}
             onClick={() => setUserWantsEditorOpen((currentValue) => !currentValue)}
             tone={isEditingManualLyrics ? 'cyan' : 'neutral'}
-            ariaLabel={isEditingManualLyrics ? 'Manuel söz girişini kapat' : 'Söz ekle'}
+            ariaLabel={isEditingManualLyrics ? t('lyrics.closeManual') : t('lyrics.addLyrics')}
             tooltip={
-              isEditingManualLyrics ? 'Manuel söz girişini kapat' : 'Söz ekle veya düzenle'
+              isEditingManualLyrics ? t('lyrics.closeManualTooltip') : t('lyrics.addOrEditTooltip')
             }
           />
         </div>
@@ -234,10 +229,10 @@ export const LyricsDisplay = ({
         <div className="mt-5 rounded-3xl border border-gray-800 bg-gray-900/60 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Manuel giriş</p>
-              <p className="mt-1 text-sm text-gray-300">
-                Şarkı sözü yanlışsa veya hiç bulunamadıysa buraya yapıştırabilirsin.
+              <p className="text-xs uppercase tracking-[0.2em] text-gray-500">
+                {t('lyrics.manualEntry')}
               </p>
+              <p className="mt-1 text-sm text-gray-300">{t('lyrics.manualHint')}</p>
             </div>
             <button
               type="button"
@@ -248,7 +243,7 @@ export const LyricsDisplay = ({
               className={pillClassName}
             >
               <TrashIcon className="h-3.5 w-3.5" />
-              <span>Temizle</span>
+              <span>{t('lyrics.clear')}</span>
             </button>
           </div>
 
@@ -256,12 +251,10 @@ export const LyricsDisplay = ({
             <textarea
               value={manualLyricsText}
               onChange={(event) => onManualLyricsChange(event.target.value)}
-              placeholder="Buraya şarkı sözlerini satır satır yapıştır..."
+              placeholder={t('lyrics.manualPlaceholder')}
               className="min-h-40 w-full rounded-2xl border border-gray-800 bg-gray-950/80 px-4 py-3 text-sm leading-6 text-gray-100 outline-none transition placeholder:text-gray-600 focus:border-emerald-400/50"
             />
-            <p className="text-xs text-gray-500">
-              Girilen metin tarayıcıda kaydedilir ve aynı parçada tekrar açıldığında yeniden kullanılır.
-            </p>
+            <p className="text-xs text-gray-500">{t('lyrics.manualSavedNote')}</p>
           </div>
         </div>
       ) : null}
@@ -276,13 +269,13 @@ export const LyricsDisplay = ({
         {isLoading ? (
           <div className="flex min-h-60 flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-gray-800 bg-gray-900/60">
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-700 border-t-emerald-400" />
-            <p className="text-sm text-gray-400">Şarkı sözleri yükleniyor...</p>
+            <p className="text-sm text-gray-400">{t('lyrics.loading')}</p>
           </div>
         ) : null}
 
         {!isLoading && lines.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-gray-800 bg-gray-900/60 p-6 text-center text-gray-400">
-            Çalan parça için henüz gösterilecek söz bulunamadı. Manuel söz alanını kullanabilirsin.
+            {t('lyrics.empty')}
           </div>
         ) : null}
 
@@ -309,15 +302,15 @@ export const LyricsDisplay = ({
             }[badgeState]
 
             const badgeTitle = {
-              saved: 'Analiz kaydedildi — tıklayınca anında açılır.',
-              ready: 'Bu satır analiz için hazır — tıklayarak analiz et.',
-              info: INFO_BADGE_COPY,
+              saved: t('lyrics.badge.savedTooltip'),
+              ready: t('lyrics.badge.readyTooltip'),
+              info: t('lyrics.badge.infoTooltip'),
             }[badgeState]
 
             const badgeLabel = {
-              saved: 'Analiz kaydedildi',
-              ready: 'Analize hazır',
-              info: 'Sadece görüntüle',
+              saved: t('lyrics.badge.savedLabel'),
+              ready: t('lyrics.badge.readyLabel'),
+              info: t('lyrics.badge.infoLabel'),
             }[badgeState]
 
             const BadgeIcon = { saved: CheckIcon, ready: SparkleIcon, info: DotIcon }[badgeState]

@@ -1,4 +1,5 @@
 import type { KeyboardEvent, MouseEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -9,6 +10,7 @@ import {
   PlayIcon,
   PreviousIcon,
 } from './icons'
+import { LanguageSwitcher } from './LanguageSwitcher'
 import type { SpotifyTrack } from '../types'
 import { useRomaji } from '../hooks/useRomaji'
 import { formatDuration } from '../utils/formatDuration'
@@ -46,7 +48,8 @@ export const CompactPlayer = ({
   progressRatio,
   track,
 }: CompactPlayerProps) => {
-  const trackName = track?.name ?? (isLoading ? 'Yükleniyor...' : 'Çalan şarkı yok')
+  const { t } = useTranslation()
+  const trackName = track?.name ?? (isLoading ? t('player.loading') : t('player.noTrack'))
   const nameRomaji = useRomaji(track?.name)
   const artistRomaji = useRomaji(track?.artist)
   const albumRomaji = useRomaji(track?.albumName)
@@ -118,13 +121,14 @@ export const CompactPlayer = ({
             ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
+            <LanguageSwitcher align="left" />
             {onLogout ? (
               <button
                 type="button"
                 onClick={onLogout}
                 className={logoutButtonClass}
-                aria-label="Çıkış yap"
-                title="Çıkış yap"
+                aria-label={t('player.logout')}
+                title={t('player.logout')}
               >
                 <LogoutIcon className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -133,8 +137,8 @@ export const CompactPlayer = ({
               type="button"
               onClick={onToggleExpand}
               className={iconButtonClass}
-              aria-label="Oynatıcıyı küçült"
-              title="Küçült"
+              aria-label={t('player.minimizePlayer')}
+              title={t('player.minimize')}
             >
               <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -146,8 +150,8 @@ export const CompactPlayer = ({
             onClick={onPrevious}
             disabled={!hasTrack}
             className={iconButtonClass}
-            aria-label="Önceki parça"
-            title="Önceki parça"
+            aria-label={t('player.previous')}
+            title={t('player.previous')}
           >
             <PreviousIcon className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -156,8 +160,8 @@ export const CompactPlayer = ({
             onClick={onTogglePlayback}
             disabled={!hasTrack}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-emerald-500 bg-emerald-500 text-gray-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label={isPlaying ? 'Duraklat' : 'Oynat'}
-            title={isPlaying ? 'Duraklat' : 'Oynat'}
+            aria-label={isPlaying ? t('player.pause') : t('player.play')}
+            title={isPlaying ? t('player.pause') : t('player.play')}
           >
             {isPlaying ? (
               <PauseIcon className="h-5 w-5" aria-hidden="true" />
@@ -170,8 +174,8 @@ export const CompactPlayer = ({
             onClick={onNext}
             disabled={!hasTrack}
             className={iconButtonClass}
-            aria-label="Sonraki parça"
-            title="Sonraki parça"
+            aria-label={t('player.next')}
+            title={t('player.next')}
           >
             <NextIcon className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -180,7 +184,7 @@ export const CompactPlayer = ({
           <div
             role="slider"
             tabIndex={hasTrack ? 0 : -1}
-            aria-label="Şarkı konumu"
+            aria-label={t('player.seek')}
             aria-valuemin={0}
             aria-valuemax={durationMs}
             aria-valuenow={track?.progressMs ?? 0}
@@ -232,8 +236,8 @@ export const CompactPlayer = ({
         onClick={onTogglePlayback}
         disabled={!hasTrack}
         className={iconButtonClass}
-        aria-label={isPlaying ? 'Duraklat' : 'Oynat'}
-        title={isPlaying ? 'Duraklat' : 'Oynat'}
+        aria-label={isPlaying ? t('player.pause') : t('player.play')}
+        title={isPlaying ? t('player.pause') : t('player.play')}
       >
         {isPlaying ? (
           <PauseIcon className="h-4 w-4" aria-hidden="true" />
@@ -245,8 +249,8 @@ export const CompactPlayer = ({
         type="button"
         onClick={onToggleExpand}
         className={iconButtonClass}
-        aria-label="Oynatıcıyı büyüt"
-        title="Büyüt"
+        aria-label={t('player.maximizePlayer')}
+        title={t('player.maximize')}
       >
         <ChevronUpIcon className="h-4 w-4" aria-hidden="true" />
       </button>
