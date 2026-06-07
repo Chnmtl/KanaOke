@@ -1,4 +1,5 @@
-import { BoltIcon, DatabaseIcon, InfoIcon } from './icons'
+import { BoltIcon, CheckIcon, InfoIcon } from './icons'
+import { Tooltip } from './Tooltip'
 import type { AnalysisResult, LyricsLine } from '../types'
 
 const InfoBubble = ({ title }: { title: string }) => (
@@ -26,24 +27,31 @@ export const AnalysisPanel = ({
   selectedLine,
 }: AnalysisPanelProps) => (
   <aside className="h-full min-h-0 overflow-y-auto rounded-3xl border border-gray-800 bg-gray-950/80 p-5 shadow-xl shadow-black/20">
-    <p className="text-sm uppercase tracking-[0.3em] text-emerald-400">Analysis</p>
-    <div className="mt-1 flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <h2 className="text-2xl font-semibold text-white">Satır analizi</h2>
       {analysis && analysisSource ? (
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] ${
+        <Tooltip
+          align="left"
+          label={
             analysisSource === 'cache'
-              ? 'border border-emerald-400/40 bg-emerald-500/10 text-emerald-200'
-              : 'border border-cyan-400/40 bg-cyan-500/10 text-cyan-200'
-          }`}
+              ? 'Bu analiz kayıttan yüklendi — anında açıldı.'
+              : 'Bu analiz az önce oluşturuldu ve kaydedildi.'
+          }
         >
-          {analysisSource === 'cache' ? (
-            <DatabaseIcon className="h-3.5 w-3.5" />
-          ) : (
-            <BoltIcon className="h-3.5 w-3.5" />
-          )}
-          <span>{analysisSource === 'cache' ? 'Cache' : 'Yeni'}</span>
-        </span>
+          <span
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-full border ${
+              analysisSource === 'cache'
+                ? 'border-emerald-300/70 bg-emerald-500 text-gray-950 shadow-md shadow-emerald-500/30'
+                : 'border-cyan-400/50 bg-cyan-500/15 text-cyan-300'
+            }`}
+          >
+            {analysisSource === 'cache' ? (
+              <CheckIcon className="h-[18px] w-[18px]" />
+            ) : (
+              <BoltIcon className="h-[18px] w-[18px]" />
+            )}
+          </span>
+        </Tooltip>
       ) : null}
     </div>
 

@@ -23,7 +23,7 @@ interface NowPlayingProps {
 }
 
 const controlButtonClass =
-  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#27365A] bg-[#09142A]/90 text-gray-200 transition hover:border-emerald-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40'
+  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#27365A] bg-[#09142A]/90 text-gray-200 transition hover:border-emerald-300 hover:bg-emerald-400 hover:text-gray-950 hover:shadow-md hover:shadow-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#27365A] disabled:hover:bg-[#09142A]/90 disabled:hover:text-gray-200 disabled:hover:shadow-none'
 
 export const NowPlaying = ({
   className = '',
@@ -120,11 +120,12 @@ export const NowPlaying = ({
           <button
             type="button"
             onClick={onLogout}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#27365A] bg-[#09142A]/90 text-gray-200 transition hover:border-emerald-400 hover:text-white"
-            title="Çıkış yap"
+            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#27365A] bg-[#09142A]/90 px-3.5 py-2 text-sm font-medium text-gray-200 transition hover:border-red-400 hover:bg-red-500 hover:text-white hover:shadow-md hover:shadow-red-500/30"
+            title="Spotify oturumunu kapat"
             aria-label="Çıkış yap"
           >
             <LogoutIcon className="h-4 w-4" aria-hidden="true" />
+            <span>Çıkış yap</span>
           </button>
         </div>
 

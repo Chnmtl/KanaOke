@@ -2,10 +2,56 @@ import { createServer } from 'node:http'
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import KuroshiroImport from 'kuroshiro'
+import KuromojiAnalyzerImport from 'kuroshiro-analyzer-kuromoji'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const projectRoot = path.resolve(__dirname, '..')
+
+// kuroshiro / kuromoji ship as CommonJS; under ESM the class lands on `.default`.
+const Kuroshiro = KuroshiroImport.default ?? KuroshiroImport
+const KuromojiAnalyzer = KuromojiAnalyzerImport.default ?? KuromojiAnalyzerImport
+
+const JAPANESE_TEXT_PATTERN = /[぀-ヿ㐀-䶿一-鿿豈-﫿]/
+
+// kuromoji reads its dictionary straight off the filesystem here (native fs +
+// zlib), so there are no browser shims, no /dict HTTP serving, and no
+// Content-Encoding pitfalls. Initialised once, lazily, and reused.
+let kuroshiroPromise = null
+
+const getKuroshiro = () => {
+  if (!kuroshiroPromise) {
+    const dictPath = path.join(projectRoot, 'node_modules', 'kuromoji', 'dict')
+    const instance = new Kuroshiro()
+    kuroshiroPromise = instance
+      .init(new KuromojiAnalyzer({ dictPath }))
+      .then(() => instance)
+      .catch((error) => {
+        kuroshiroPromise = null // allow a later retry
+        throw error
+      })
+  }
+
+  return kuroshiroPromise
+}
+
+const convertToRomaji = async (text) => {
+  const trimmed = typeof text === 'string' ? text.trim() : ''
+
+  if (!trimmed || !JAPANESE_TEXT_PATTERN.test(trimmed)) {
+    return ''
+  }
+
+  const kuroshiro = await getKuroshiro()
+  const romaji = await kuroshiro.convert(trimmed, {
+    to: 'romaji',
+    mode: 'spaced',
+    romajiSystem: 'hepburn',
+  })
+
+  return romaji.trim()
+}
 
 const loadEnvFile = (fileName) => {
   const filePath = path.join(projectRoot, fileName)
@@ -156,6 +202,37 @@ const server = createServer(async (request, response) => {
       ok: true,
       tokenConfigured: Boolean(githubModelsToken),
     })
+    return
+  }
+
+  if (request.method === 'POST' && requestUrl.pathname === '/api/romaji') {
+    try {
+      const body = await readJsonBody(request)
+      const texts = Array.isArray(body.texts)
+        ? body.texts
+        : typeof body.text === 'string'
+          ? [body.text]
+          : null
+
+      if (!texts) {
+        sendJson(response, 400, { error: 'texts (dizi) veya text (metin) alani zorunludur.' })
+        return
+      }
+
+      const romaji = await Promise.all(texts.map((text) => convertToRomaji(text)))
+
+      logDebug('romaji_request_succeeded', {
+        count: texts.length,
+        durationMs: Date.now() - startedAt,
+      })
+
+      sendJson(response, 200, { romaji })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Romaji donusumu basarisiz oldu.'
+      logDebug('romaji_request_crashed', { durationMs: Date.now() - startedAt, message })
+      sendJson(response, 500, { error: message })
+    }
+
     return
   }
 

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ComponentType } from 'react'
 import {
   BoltIcon,
+  CheckIcon,
   CloseIcon,
   DotIcon,
   EditIcon,
@@ -11,6 +12,7 @@ import {
   SparkleIcon,
   TrashIcon,
 } from './icons'
+import { Tooltip } from './Tooltip'
 import type { AnalysisResult, LyricsLine } from '../types'
 
 const JAPANESE_TEXT_PATTERN = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/
@@ -28,6 +30,7 @@ interface LyricsDisplayProps {
   onSelectLine: (line: LyricsLine) => void
   onManualLyricsChange: (lyricsText: string) => void
   onRefreshLyrics: () => void
+  romajiByLineId: Map<string, string>
   selectedLineId: string | null
   sourceDescription: string | null
 }
@@ -37,6 +40,61 @@ const INFO_BADGE_COPY =
 
 const pillClassName =
   'inline-flex items-center gap-2 rounded-full border border-gray-800 bg-gray-900 px-3 py-1.5 text-xs text-gray-300 transition hover:border-emerald-400/50 hover:text-white'
+
+type ActionTone = 'neutral' | 'emerald' | 'cyan'
+
+const actionToneClassName: Record<ActionTone, string> = {
+  neutral: 'border-gray-700 bg-gray-900 text-gray-300',
+  emerald: 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200',
+  cyan: 'border-cyan-400/40 bg-cyan-500/10 text-cyan-200',
+}
+
+interface HeaderActionProps {
+  icon: ComponentType<{ className?: string }>
+  tooltip: string
+  ariaLabel: string
+  onClick?: () => void
+  tone?: ActionTone
+  count?: number
+  active?: boolean
+}
+
+const HeaderAction = ({
+  icon: Icon,
+  tooltip,
+  ariaLabel,
+  onClick,
+  tone = 'neutral',
+  count,
+  active = false,
+}: HeaderActionProps) => {
+  const interactive = typeof onClick === 'function'
+
+  return (
+    <Tooltip label={tooltip}>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-pressed={interactive ? active : undefined}
+        aria-label={ariaLabel}
+        className={`relative inline-flex h-9 w-9 items-center justify-center rounded-full border transition active:scale-95 ${
+          active ? 'border-emerald-300/70 bg-emerald-500 text-gray-950 shadow-md shadow-emerald-500/30' : actionToneClassName[tone]
+        } ${
+          interactive
+            ? 'cursor-pointer hover:border-emerald-300 hover:bg-emerald-400 hover:text-gray-950 hover:shadow-md hover:shadow-emerald-500/30'
+            : 'cursor-default'
+        }`}
+      >
+        <Icon className="h-[18px] w-[18px]" />
+        {typeof count === 'number' && count > 0 ? (
+          <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-400 px-1 text-[10px] font-semibold text-gray-950">
+            {count}
+          </span>
+        ) : null}
+      </button>
+    </Tooltip>
+  )
+}
 
 const lineClasses = (isActive: boolean, isPast: boolean, isSelected: boolean) => {
   if (isActive) {
@@ -67,10 +125,12 @@ export const LyricsDisplay = ({
   onSelectLine,
   onManualLyricsChange,
   onRefreshLyrics,
+  romajiByLineId,
   selectedLineId,
   sourceDescription,
 }: LyricsDisplayProps) => {
   const [userWantsEditorOpen, setUserWantsEditorOpen] = useState(false)
+  const [showSavedOnly, setShowSavedOnly] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const lineRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const autoFollowPausedUntilRef = useRef(0)
@@ -79,6 +139,7 @@ export const LyricsDisplay = ({
   }
   const isEditingManualLyrics =
     userWantsEditorOpen || isUsingManualLyrics || manualLyricsText.trim().length > 0
+  const filterSavedOnly = showSavedOnly && cachedAnalysisLineIds.size > 0
 
   useEffect(() => {
     if (!hasSyncedLyrics || isLoading || activeLineIndex < 0 || activeLineIndex >= lines.length) {
@@ -116,45 +177,56 @@ export const LyricsDisplay = ({
 
   return (
     <section className="flex h-full min-h-0 flex-col rounded-3xl border border-gray-800 bg-gray-950/80 p-5 shadow-xl shadow-black/20">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-sm uppercase tracking-[0.3em] text-emerald-400">Lyrics</p>
-          <h2 className="mt-1 text-2xl font-semibold text-white">Karaoke görünümü</h2>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-2 rounded-full border border-gray-800 bg-gray-900 px-3 py-1.5 text-xs text-gray-400">
-            {hasSyncedLyrics ? <MusicNoteIcon className="h-3.5 w-3.5" /> : <LinesIcon className="h-3.5 w-3.5" />}
-            <span>{hasSyncedLyrics ? 'Senkronize' : 'Duz soz'}</span>
-          </span>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-2xl font-semibold text-white">Karaoke görünümü</h2>
+        <div className="flex items-center gap-1.5">
+          <HeaderAction
+            icon={hasSyncedLyrics ? MusicNoteIcon : LinesIcon}
+            tone={hasSyncedLyrics ? 'emerald' : 'neutral'}
+            ariaLabel="Söz senkronizasyon durumu"
+            tooltip={
+              hasSyncedLyrics
+                ? 'Senkronize sözler: şarkıyla zaman uyumlu, otomatik ilerler.'
+                : 'Düz söz: zaman bilgisi yok, otomatik ilerlemez.'
+            }
+          />
           {cachedAnalysisLineIds.size > 0 ? (
-            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-200">
-              <BoltIcon className="h-3.5 w-3.5" />
-              <span>{cachedAnalysisLineIds.size}</span>
-            </span>
+            <HeaderAction
+              icon={BoltIcon}
+              tone="emerald"
+              count={cachedAnalysisLineIds.size}
+              active={filterSavedOnly}
+              onClick={() => setShowSavedOnly((currentValue) => !currentValue)}
+              ariaLabel={filterSavedOnly ? 'Tüm satırları göster' : 'Sadece kayıtlı satırları göster'}
+              tooltip={
+                filterSavedOnly
+                  ? 'Filtre açık: yalnızca kayıtlı satırlar gösteriliyor. Tümünü görmek için tıkla.'
+                  : `${cachedAnalysisLineIds.size} satırın analizi kayıtlı. Yalnızca bunları görmek için tıkla.`
+              }
+            />
           ) : null}
           {sourceDescription ? (
-            <span className="inline-flex items-center gap-2 rounded-full border border-gray-700 bg-gray-900 px-3 py-1.5 text-xs text-gray-400" title={sourceDescription}>
-              <InfoIcon className="h-3.5 w-3.5" />
-              <span>Kaynak</span>
-            </span>
+            <HeaderAction
+              icon={InfoIcon}
+              ariaLabel="Söz kaynağı"
+              tooltip={sourceDescription}
+            />
           ) : null}
-          <button
-            type="button"
+          <HeaderAction
+            icon={RefreshIcon}
             onClick={onRefreshLyrics}
-            className={pillClassName}
-            title="Sözleri yeniden getir"
-          >
-            <RefreshIcon className="h-3.5 w-3.5" />
-            <span>Yenile</span>
-          </button>
-          <button
-            type="button"
+            ariaLabel="Sözleri yenile"
+            tooltip="Sözleri yeniden getir"
+          />
+          <HeaderAction
+            icon={isEditingManualLyrics ? CloseIcon : EditIcon}
             onClick={() => setUserWantsEditorOpen((currentValue) => !currentValue)}
-            className={pillClassName}
-          >
-            {isEditingManualLyrics ? <CloseIcon className="h-3.5 w-3.5" /> : <EditIcon className="h-3.5 w-3.5" />}
-            <span>{isEditingManualLyrics ? 'Kapat' : 'Soz ekle'}</span>
-          </button>
+            tone={isEditingManualLyrics ? 'cyan' : 'neutral'}
+            ariaLabel={isEditingManualLyrics ? 'Manuel söz girişini kapat' : 'Söz ekle'}
+            tooltip={
+              isEditingManualLyrics ? 'Manuel söz girişini kapat' : 'Söz ekle veya düzenle'
+            }
+          />
         </div>
       </div>
 
@@ -215,7 +287,10 @@ export const LyricsDisplay = ({
         ) : null}
 
         {!isLoading &&
-          lines.map((line, index) => {
+          lines
+            .map((line, index) => ({ line, index }))
+            .filter(({ line }) => !filterSavedOnly || cachedAnalysisLineIds.has(line.id))
+            .map(({ line, index }) => {
             const isActive = index === activeLineIndex
             const isPast = activeLineIndex >= 0 && index < activeLineIndex
             const isJapanese = JAPANESE_TEXT_PATTERN.test(line.text)
@@ -223,29 +298,29 @@ export const LyricsDisplay = ({
             const hasCachedAnalysis = cachedAnalysisLineIds.has(line.id)
             const cachedAnalysis = cachedAnalysisByLineId.get(line.id)
 
-            const badgeClassName = isJapanese
-              ? hasCachedAnalysis
-                ? 'border border-emerald-400/40 bg-emerald-500/10 text-emerald-200'
-                : 'border border-cyan-400/40 bg-cyan-500/10 text-cyan-200'
-              : 'border border-gray-700 bg-gray-900 text-gray-400'
+            const badgeState = hasCachedAnalysis ? 'saved' : isJapanese ? 'ready' : 'info'
 
-            const badgeTitle = isJapanese
-              ? hasCachedAnalysis
-                ? 'Bu satırın analizi storage cache içinde kayıtlı.'
-                : 'Bu satır analiz için uygun, ama storage cache henüz oluşmadı.'
-              : INFO_BADGE_COPY
+            const badgeClassName = {
+              saved:
+                'border border-emerald-300/70 bg-emerald-500 text-gray-950 shadow-md shadow-emerald-500/30',
+              ready:
+                'border border-cyan-400/50 bg-cyan-500/15 text-cyan-300 group-hover:border-cyan-300 group-hover:bg-cyan-400 group-hover:text-gray-950 group-hover:shadow-md group-hover:shadow-cyan-500/30',
+              info: 'border border-gray-700/60 bg-gray-900/40 text-gray-600',
+            }[badgeState]
 
-            const badgeLabel = isJapanese
-              ? hasCachedAnalysis
-                ? 'Kaydedildi'
-                : 'Analize hazır'
-              : 'Sadece görüntüle'
+            const badgeTitle = {
+              saved: 'Analiz kaydedildi — tıklayınca anında açılır.',
+              ready: 'Bu satır analiz için hazır — tıklayarak analiz et.',
+              info: INFO_BADGE_COPY,
+            }[badgeState]
 
-            const BadgeIcon = isJapanese
-              ? hasCachedAnalysis
-                ? BoltIcon
-                : SparkleIcon
-              : DotIcon
+            const badgeLabel = {
+              saved: 'Analiz kaydedildi',
+              ready: 'Analize hazır',
+              info: 'Sadece görüntüle',
+            }[badgeState]
+
+            const BadgeIcon = { saved: CheckIcon, ready: SparkleIcon, info: DotIcon }[badgeState]
 
             return (
               <button
@@ -262,22 +337,22 @@ export const LyricsDisplay = ({
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
-                    <p className="jp-text leading-relaxed text-inherit">
-                      {line.text}
-                      {cachedAnalysis?.romaji ? (
-                        <span className="ml-2 text-sm italic text-gray-400">({cachedAnalysis.romaji})</span>
-                      ) : null}
-                    </p>
+                    <p className="jp-text leading-relaxed text-inherit">{line.text}</p>
+                    {(cachedAnalysis?.romaji || romajiByLineId.get(line.id)) ? (
+                      <p className="mt-0.5 text-sm italic text-gray-400">
+                        {cachedAnalysis?.romaji ?? romajiByLineId.get(line.id)}
+                      </p>
+                    ) : null}
                     {cachedAnalysis?.translation ? (
                       <p className="mt-2 text-sm leading-6 text-gray-300">{cachedAnalysis.translation}</p>
                     ) : null}
                   </div>
                   <span
-                    className={`mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${badgeClassName}`}
+                    className={`mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition duration-200 ${badgeClassName}`}
                     title={badgeTitle}
                     aria-label={badgeLabel}
                   >
-                    <BadgeIcon className="h-4 w-4" />
+                    <BadgeIcon className="h-[18px] w-[18px]" />
                   </span>
                 </div>
               </button>

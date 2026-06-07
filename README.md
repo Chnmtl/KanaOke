@@ -63,6 +63,14 @@ npm run build
 - Proxy `GITHUB_MODELS_TOKEN` değerini `process.env`, `.env.local` veya `.env` içinden okur.
 - Sağlık kontrolü için `http://127.0.0.1:8787/health` adresini açabilirsin.
 
+### Romaji Okumaları
+
+- Romaji, aynı proxy üzerinde `http://127.0.0.1:8787/api/romaji` adresinden üretilir.
+- Kuroshiro + kuromoji, sözlüğü doğrudan `node_modules/kuromoji/dict` içinden okuyarak **Node tarafında** çalışır; tarayıcıya sözlük indirilmez ve herhangi bir shim/polyfill gerekmez.
+- `POST` gövdesi `{ "texts": ["東京", ...] }` (veya tek metin için `{ "text": "..." }`) alır, `{ "romaji": ["tōkyō", ...] }` döner. Japonca olmayan metinler için boş dize döner.
+- İstemci tarafında endpoint'i `VITE_ROMAJI_API_URL` ile ayarla. Tanımlı değilse romaji gösterilmez (uygulama yine çalışır).
+- Şarkı adı/sanatçı/albüm ve tüm Japonca söz satırları için romaji otomatik gösterilir; sonuçlar tarayıcıda önbelleğe alınır.
+
 ### Debug Logları
 
 - Tarayıcı tarafında analiz çağrısı loglarını görmek için `VITE_ANALYSIS_DEBUG=true` ayarla.

@@ -80,6 +80,7 @@ function App() {
     refreshLyrics,
     setManualLyricsText,
     sourceDescription,
+    romajiByLineId,
   } = useLyrics({
     albumName: player?.albumName ?? null,
     artistName: player?.artist ?? null,
@@ -268,6 +269,7 @@ function App() {
                 lines={lines}
                 manualLyricsText={manualLyricsText}
                 onSelectLine={handleSelectLine}
+                romajiByLineId={romajiByLineId}
                 onManualLyricsChange={setManualLyricsText}
                 onRefreshLyrics={refreshLyrics}
                 selectedLineId={resolvedSelectedLine?.id ?? null}

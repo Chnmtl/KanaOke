@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { fetchRomaji } from '../api/romaji'
 import type { LyricsLine } from '../types'
 
 interface UseLyricsArgs {
@@ -23,13 +24,14 @@ interface LrcLibResponse {
 interface LyricsCacheEntry {
   fetchedHasSyncedLyrics: boolean
   fetchedLines: LyricsLine[]
+  fetchedRomajiByLineId: Record<string, string>
   fetchedSourceDescription: string | null
   manualLyricsText: string
   updatedAt: number
 }
 
 const JAPANESE_TEXT_PATTERN = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/
-const CACHE_PREFIX = 'japoncaegitim:lyrics-cache:v1'
+const CACHE_PREFIX = 'japoncaegitim:lyrics-cache:v2'
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1_000
 
 const normalizeValue = (value: string | null | undefined) =>
@@ -80,6 +82,10 @@ const readLyricsCache = (trackKey: string) => {
     return {
       fetchedHasSyncedLyrics: Boolean(parsed.fetchedHasSyncedLyrics),
       fetchedLines: Array.isArray(parsed.fetchedLines) ? parsed.fetchedLines : [],
+      fetchedRomajiByLineId:
+        parsed.fetchedRomajiByLineId && typeof parsed.fetchedRomajiByLineId === 'object'
+          ? (parsed.fetchedRomajiByLineId as Record<string, string>)
+          : {},
       fetchedSourceDescription:
         typeof parsed.fetchedSourceDescription === 'string'
           ? parsed.fetchedSourceDescription
@@ -258,9 +264,25 @@ const parsePlainLyrics = (lyrics: string): LyricsLine[] =>
       timestampMs: null,
     }))
 
+const buildRomajiByLineId = async (lines: LyricsLine[]): Promise<Record<string, string>> => {
+  const romajiByText = await fetchRomaji(lines.map((line) => line.text))
+  const result: Record<string, string> = {}
+
+  for (const line of lines) {
+    const romaji = romajiByText.get(line.text.trim())
+
+    if (romaji) {
+      result[line.id] = romaji
+    }
+  }
+
+  return result
+}
+
 export const useLyrics = ({ albumName, artistName, durationMs, progressMs, trackName }: UseLyricsArgs) => {
   const [cachedLines, setCachedLines] = useState<LyricsLine[]>([])
   const [cachedHasSyncedLyrics, setCachedHasSyncedLyrics] = useState(false)
+  const [cachedRomajiByLineId, setCachedRomajiByLineId] = useState<Map<string, string>>(new Map())
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sourceDescription, setSourceDescription] = useState<string | null>(null)
@@ -296,6 +318,7 @@ export const useLyrics = ({ albumName, artistName, durationMs, progressMs, track
     (entry: LyricsCacheEntry) => {
       setCachedLines(entry.fetchedLines)
       setCachedHasSyncedLyrics(entry.fetchedHasSyncedLyrics)
+      setCachedRomajiByLineId(new Map(Object.entries(entry.fetchedRomajiByLineId ?? {})))
       setManualLyricsTextState(entry.manualLyricsText)
       setSourceDescription(entry.fetchedSourceDescription)
       setLoadedTrackKey(trackCacheKey)
@@ -310,6 +333,7 @@ export const useLyrics = ({ albumName, artistName, durationMs, progressMs, track
       const nextEmptyEntry: LyricsCacheEntry = {
         fetchedHasSyncedLyrics: false,
         fetchedLines: [],
+        fetchedRomajiByLineId: {},
         fetchedSourceDescription: null,
         manualLyricsText: '',
         updatedAt: Date.now(),
@@ -317,6 +341,7 @@ export const useLyrics = ({ albumName, artistName, durationMs, progressMs, track
 
       setCachedLines([])
       setCachedHasSyncedLyrics(false)
+      setCachedRomajiByLineId(new Map())
       setSourceDescription(null)
       writeLyricsCache(trackCacheKey, nextEmptyEntry)
       setLoadedTrackKey(trackCacheKey)
@@ -336,6 +361,7 @@ export const useLyrics = ({ albumName, artistName, durationMs, progressMs, track
     writeLyricsCache(trackCacheKey, {
       fetchedHasSyncedLyrics: cachedHasSyncedLyrics,
       fetchedLines: cachedLines,
+      fetchedRomajiByLineId: Object.fromEntries(cachedRomajiByLineId),
       fetchedSourceDescription: sourceDescription,
       manualLyricsText: value,
       updatedAt: Date.now(),
@@ -423,14 +449,19 @@ export const useLyrics = ({ albumName, artistName, durationMs, progressMs, track
         const syncedLyrics = bestCandidate.syncedLyrics?.trim()
         const plainLyrics = bestCandidate.plainLyrics?.trim()
         const lyricType = syncedLyrics ? 'senkronize' : 'plain'
+        const nextLines = syncedLyrics ? parseSyncedLyrics(syncedLyrics) : parsePlainLyrics(plainLyrics ?? '')
+
+        const fetchedRomajiByLineId = await buildRomajiByLineId(nextLines)
+        const hasRomaji = Object.keys(fetchedRomajiByLineId).length > 0
+
         const sourceMessage =
           payload.length > 1
-            ? `LRCLIB ${payload.length} aday arasından isim, sanatçı, albüm, süre ve Japonca içerik skoruna göre ${lyricType} kayıt seçildi.`
-            : `LRCLIB ${lyricType} kayıt kullanıldı.`
-        const nextLines = syncedLyrics ? parseSyncedLyrics(syncedLyrics) : parsePlainLyrics(plainLyrics ?? '')
+            ? `LRCLIB ${payload.length} aday arasından isim, sanatçı, albüm, süre ve Japonca içerik skoruna göre ${lyricType} kayıt seçildi.${hasRomaji ? ' Romaji okumaları otomatik eklendi.' : ''}`
+            : `LRCLIB ${lyricType} kayıt kullanıldı.${hasRomaji ? ' Romaji okumaları otomatik eklendi.' : ''}`
         const nextEntry: LyricsCacheEntry = {
           fetchedHasSyncedLyrics: Boolean(syncedLyrics),
           fetchedLines: nextLines,
+          fetchedRomajiByLineId,
           fetchedSourceDescription: sourceMessage,
           manualLyricsText,
           updatedAt: Date.now(),
@@ -501,6 +532,7 @@ export const useLyrics = ({ albumName, artistName, durationMs, progressMs, track
     lines: hasTrack ? lines : [],
     manualLyricsText: trackDataIsActive ? manualLyricsText : '',
     refreshLyrics,
+    romajiByLineId: hasTrack ? cachedRomajiByLineId : new Map<string, string>(),
     setManualLyricsText,
     sourceDescription: hasTrack ? effectiveSourceDescription : null,
   }

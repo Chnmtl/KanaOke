@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { convertToRomaji } from '../utils/romaji'
+import { convertToRomaji } from '../api/romaji'
 
 /**
  * Resolves the offline romaji reading for a piece of Japanese text (track name,

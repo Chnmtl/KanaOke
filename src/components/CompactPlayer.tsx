@@ -28,7 +28,10 @@ interface CompactPlayerProps {
 }
 
 const iconButtonClass =
-  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-700 bg-gray-800 text-gray-300 transition hover:border-emerald-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40'
+  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-700 bg-gray-800 text-gray-300 transition hover:border-emerald-300 hover:bg-emerald-400 hover:text-gray-950 hover:shadow-md hover:shadow-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-700 disabled:hover:bg-gray-800 disabled:hover:text-gray-300 disabled:hover:shadow-none'
+
+const logoutButtonClass =
+  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-700 bg-gray-800 text-gray-300 transition hover:border-red-400 hover:bg-red-500 hover:text-white hover:shadow-md hover:shadow-red-500/30'
 
 export const CompactPlayer = ({
   className = '',
@@ -119,7 +122,7 @@ export const CompactPlayer = ({
               <button
                 type="button"
                 onClick={onLogout}
-                className={iconButtonClass}
+                className={logoutButtonClass}
                 aria-label="Çıkış yap"
                 title="Çıkış yap"
               >
