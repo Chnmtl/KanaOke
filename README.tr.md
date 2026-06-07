@@ -6,6 +6,8 @@ Spotify'da çalan Japonca şarkıları öğrenme aracına dönüştüren bir web
 
 React + Vite + TypeScript ile yazılmıştır; analiz ve romaji üretimi için küçük bir Node proxy kullanır.
 
+> **Durum:** kişisel, ticari olmayan bir **portföy projesi**. Bir ürün değildir ve gelir amacı gütmez — yetenekleri sergilemek ve insanların Japonca çalışmasına yardımcı olmak için yapılmıştır. Spotify entegrasyonu Geliştirme Modu'nda çalışır, ücretli özellik veya reklam yoktur ve şarkı sözleri sahiplerine aittir. Bkz. [Lisans](#lisans) ve [DISCLAIMER.md](DISCLAIMER.md).
+
 ## Ne yapar?
 
 - 🎵 **Çalan şarkıyı algılar** — Spotify'a giriş yap, çalan parça ve süresi anlık olarak takip edilir.
@@ -58,3 +60,23 @@ npm run preview   # derlemeyi önizle
 ## Teknolojiler
 
 React 19 · Vite · TypeScript · Tailwind CSS · Spotify Web API (OAuth 2.0 PKCE) · LRCLIB · GitHub Models · kuroshiro + kuromoji (romaji)
+
+## Lisans
+
+**Tescilli — tüm hakları saklıdır.** Bu yazılım **açık kaynak değildir.** Kaynak
+kod yalnızca tanıtım ve portföy incelemesi amacıyla herkese açık yayımlanmıştır;
+önceden yazılı izin olmadan yeniden kullanma, değiştirme, dağıtma veya bir hizmet
+olarak çalıştırma izni verilmez. Bkz. [LICENSE](LICENSE).
+
+Bu, yalnızca projenin kendi koduna uygulanır. Üçüncü taraf kütüphaneler kendi
+lisanslarını korur ve şarkı sözleri ilgili hak sahiplerine aittir — bu proje
+tarafından sahiplenilmez veya lisanslanmaz.
+
+## Hukuki bilgi & atıf
+
+KanaOke bağımsız, ticari olmayan bir projedir ve Spotify, GitHub, LRCLIB ya da
+herhangi bir sanatçı veya yapımcı ile **bağlantılı değildir, onlar tarafından
+onaylanmamıştır.** Tüm ticari markalar sahiplerine aittir. Şarkı sözleri ilgili
+hak sahiplerine aittir; uygulama bunları kişisel çalışma için gösterir ve sunucu
+tarafında saklamaz veya yeniden dağıtmaz. Tam metin için — Spotify kullanımı, söz
+telif hakları, kapsam ve kaldırma talebi iletişimi — bkz. [DISCLAIMER.md](DISCLAIMER.md).

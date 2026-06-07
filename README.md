@@ -8,6 +8,8 @@ A web app that turns the Japanese songs playing on Spotify into a learning tool.
 
 Built with React + Vite + TypeScript, plus a small Node proxy for analysis and romaji generation.
 
+> **Status:** personal, non-commercial **portfolio project**. It is not a product and is not monetized — it's built to demonstrate skills and to help people study Japanese. The Spotify integration runs in Development Mode, there are no paid features or ads, and song lyrics belong to their respective owners. See [License](#license) and [DISCLAIMER.md](DISCLAIMER.md).
+
 ## What it does
 
 - 🎵 **Detects the playing track** — sign in to Spotify; the current track and its progress are tracked in real time.
@@ -66,3 +68,23 @@ npm run preview   # preview the build
 ## Tech stack
 
 React 19 · Vite · TypeScript · Tailwind CSS · Spotify Web API (OAuth 2.0 PKCE) · LRCLIB · GitHub Models · kuroshiro + kuromoji (romaji)
+
+## License
+
+**Proprietary — all rights reserved.** This is **not** open-source software. The
+source is published publicly only for demonstration and portfolio review; no
+permission is granted to reuse, modify, redistribute, or run it as a service
+without prior written consent. See [LICENSE](LICENSE).
+
+This applies to the project's own code. Third-party libraries keep their own
+licenses, and song lyrics belong to their respective rights holders — they are
+not owned or licensed by this project.
+
+## Legal & attribution
+
+KanaOke is an independent, non-commercial project and is **not affiliated with or
+endorsed by** Spotify, GitHub, LRCLIB, or any artist or music publisher. All
+trademarks belong to their owners. Lyrics are the property of their respective
+rights holders; the app shows them for personal study and does not store or
+redistribute them server-side. For the full statement — Spotify usage, lyrics
+copyright, scope, and takedown contact — see [DISCLAIMER.md](DISCLAIMER.md).
