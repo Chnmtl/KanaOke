@@ -1,58 +1,68 @@
 # KanaOke (カナオケ)
 
-Spotify'da çalan Japonca şarkıları öğrenme aracına dönüştüren bir web uygulaması. Çalan parçayı algılar, senkronize sözlerini ekrana getirir, romaji okumalarını gösterir ve istediğin satırı tek tıkla Türkçe çeviri, kelime ve kanji detaylarıyla analiz eder.
+> 🌐 **Language / Dil:** **English** · [Türkçe](README.tr.md)
 
-React + Vite + TypeScript ile yazılmıştır; analiz ve romaji üretimi için küçük bir Node proxy kullanır.
+A web app that turns the Japanese songs playing on Spotify into a learning tool. It detects the current track, brings its synced lyrics on screen, shows romaji readings, and analyzes any line you click — with a natural translation, per-word meanings, and kanji details.
 
-## Ne yapar?
+> **About the localization:** the app is designed around Japanese learning for Turkish speakers, so line translations and word meanings are produced in Turkish. The codebase, docs, and (over time) the UI are being moved to English as the primary language, with more UI languages planned. See [Roadmap](#roadmap).
 
-- 🎵 **Çalan şarkıyı algılar** — Spotify'a giriş yap, çalan parça ve süresi anlık olarak takip edilir.
-- ▶️ **Oynatmayı kontrol et** — uygulamadan oynat/duraklat, sonraki/önceki ve süre çubuğunda atlama (Spotify Premium ile).
-- 📝 **Senkronize sözler ve karaoke** — LRCLIB'den çekilen sözlerde aktif satır vurgulanarak takip edilir. Söz yoksa veya yanlışsa kendi sözlerini yapıştırabilirsin.
-- 🔤 **Romaji okumaları** — şarkı bilgisi ve Japonca satırlar için Latin harfli okunuş otomatik gösterilir.
-- 🧠 **Satır analizi** — bir satıra tıkla; bağlama uygun doğal bir Türkçe çeviri, her kelimenin anlamı ve kanji detayları (onyomi, kunyomi, radikal, açıklama) gelir.
-- ⚡ **Hızlı tekrar** — çekilen sözler ve yapılan analizler tarayıcıda saklanır; aynı satır bir daha anında açılır.
+Built with React + Vite + TypeScript, plus a small Node proxy for analysis and romaji generation.
 
-## Kurulum
+## What it does
 
-Gerekenler: Node.js, bir Spotify hesabı (oynatma kontrolleri için Premium) ve GitHub Models erişimi olan bir kişisel erişim anahtarı (PAT).
+- 🎵 **Detects the playing track** — sign in to Spotify; the current track and its progress are tracked in real time.
+- ▶️ **Controls playback** — play/pause, next/previous, and seek on the progress bar, right from the app (requires Spotify Premium).
+- 📝 **Synced lyrics & karaoke** — lyrics are fetched from LRCLIB and the active line is highlighted as the song plays. If lyrics are missing or wrong, you can paste your own.
+- 🔤 **Romaji readings** — Latin-script readings are shown automatically for the track info and Japanese lyric lines.
+- 🧠 **Line analysis** — click a line to get a natural, context-aware translation, the meaning of each word, and kanji details (on'yomi, kun'yomi, radical, description).
+- ⚡ **Fast repeats** — fetched lyrics and analyses are cached in the browser, so the same line opens instantly next time.
 
-1. **Spotify uygulaması oluştur.** https://developer.spotify.com/dashboard adresinden bir uygulama aç ve Redirect URI olarak `http://127.0.0.1:5173/callback` ekle.
+## Setup
 
-2. **`.env` dosyasını hazırla.** Kök dizindeki `.env.example` dosyasını `.env` olarak kopyala ve değerleri doldur — en önemlileri Spotify Client ID ve `GITHUB_MODELS_TOKEN`. Tüm değişkenlerin açıklaması için [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
+You'll need: Node.js, a Spotify account (Premium for playback controls), and a personal access token (PAT) with access to GitHub Models.
 
-3. **Bağımlılıkları kur ve çalıştır.**
+1. **Create a Spotify app.** Open an app at https://developer.spotify.com/dashboard and add `http://127.0.0.1:5173/callback` as a Redirect URI.
+
+2. **Prepare your `.env` file.** Copy `.env.example` in the root to `.env` and fill in the values — the most important are the Spotify Client ID and `GITHUB_MODELS_TOKEN`. See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for every variable.
+
+3. **Install and run.**
    ```bash
    npm install
-   npm run proxy   # ayrı bir terminalde — analiz + romaji sunucusu
-   npm run dev     # Vite geliştirme sunucusu
+   npm run proxy   # in a separate terminal — analysis + romaji server
+   npm run dev     # Vite dev server
    ```
 
-4. **Tarayıcıda aç.** Vite'in verdiği adrese git ve Spotify ile giriş yap.
+4. **Open in the browser.** Go to the address Vite prints and sign in with Spotify.
 
-## Nasıl kullanılır?
+## How to use
 
-1. Spotify ile giriş yap; bilgisayarında veya telefonunda Spotify'da bir Japonca şarkı çal.
-2. Çalan parça ve senkronize sözleri ekranda belirir; aktif satır karaoke gibi vurgulanır.
-3. Anlamını öğrenmek istediğin satıra tıkla — sağ panelde çeviri, kelimeler ve kanji detayları açılır.
-4. Söz bulunamazsa veya hatalıysa "manuel söz" alanına kendi sözlerini yapıştır.
+1. Sign in with Spotify, then play a Japanese song on Spotify (on your computer or phone).
+2. The current track and its synced lyrics appear on screen; the active line is highlighted like karaoke.
+3. Click a line you want to understand — the right panel opens with the translation, words, and kanji details.
+4. If no lyrics are found (or they're wrong), paste your own into the "manual lyrics" field.
 
-> İpucu: Masaüstünde üstteki "şu an çalan" paneli küçültülerek sözlere daha fazla yer açılabilir; mobilde oynatıcı ekranın altına sabitlenir.
+> Tip: On desktop, the top "now playing" panel can be minimized to give the lyrics more room; on mobile the player is pinned to the bottom of the screen.
 
-## Geliştirme
+## Development
 
 ```bash
-npm run proxy     # analiz + romaji proxy
-npm run dev       # geliştirme sunucusu
+npm run proxy     # analysis + romaji proxy
+npm run dev       # dev server
 npm run lint      # ESLint
-npm run build     # üretim derlemesi
-npm run preview   # derlemeyi önizle
+npm run build     # production build
+npm run preview   # preview the build
 ```
 
-## Daha fazlası
+## Roadmap
 
-- **Yapılandırma, ortam değişkenleri, Codespaces ve proxy ayrıntıları:** [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
+- 🌍 **Multi-language UI** — extract hardcoded UI strings into a localization layer so the interface can ship in multiple languages.
+- 🔘 **In-app language switcher** — let users change the UI language at runtime.
+- 🇯🇵 More target languages for translations (e.g. Japanese, English) beyond the current Turkish.
 
-## Teknolojiler
+## More
+
+- **Configuration, environment variables, Codespaces, and proxy details:** [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
+
+## Tech stack
 
 React 19 · Vite · TypeScript · Tailwind CSS · Spotify Web API (OAuth 2.0 PKCE) · LRCLIB · GitHub Models · kuroshiro + kuromoji (romaji)
