@@ -1,4 +1,4 @@
-# JaponcaEgitim
+# KanaOke (カナオケ)
 
 Spotify'da çalan Japonca şarkıları öğrenme aracına dönüştüren bir web uygulaması. Çalan parçayı algılar, senkronize sözlerini ekrana getirir, romaji okumalarını gösterir ve istediğin satırı tek tıkla Türkçe çeviri, kelime ve kanji detaylarıyla analiz eder.
 
