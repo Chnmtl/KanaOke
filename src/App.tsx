@@ -98,6 +98,9 @@ function App() {
   // Below md the horizontal NowPlaying top row is hidden in favor of the fixed
   // bottom CompactPlayer, which can be toggled between compact and detailed.
   const [isBottomPlayerExpanded, setIsBottomPlayerExpanded] = useState(false)
+  // On md+ the NowPlaying top row can be minimized to a slim bar to give the
+  // lyrics/analysis panels more vertical room.
+  const [isNowPlayingMinimized, setIsNowPlayingMinimized] = useState(false)
   const isCurrentTrackSelection = selectedTrackId === (player?.id ?? null)
   const resolvedSelectedLine = isCurrentTrackSelection ? selectedLine : null
   const resolvedAnalysis = isCurrentTrackSelection ? analysis : null
@@ -242,10 +245,12 @@ function App() {
           <div className="hidden shrink-0 md:block">
             <NowPlaying
               isLoading={isSpotifyLoading}
+              isMinimized={isNowPlayingMinimized}
               onLogout={logout}
               onNext={playNext}
               onPrevious={playPrevious}
               onSeek={seekTo}
+              onToggleMinimize={() => setIsNowPlayingMinimized((value) => !value)}
               onTogglePlayback={togglePlayback}
               track={player}
             />

@@ -1,5 +1,7 @@
 import type { KeyboardEvent, MouseEvent } from 'react'
 import {
+  ChevronDownIcon,
+  ChevronUpIcon,
   LogoutIcon,
   MusicNoteIcon,
   NextIcon,
@@ -14,10 +16,12 @@ import { formatDuration } from '../utils/formatDuration'
 interface NowPlayingProps {
   className?: string
   isLoading: boolean
+  isMinimized?: boolean
   onLogout: () => void
   onNext: () => void
   onPrevious: () => void
   onSeek: (positionMs: number) => void
+  onToggleMinimize?: () => void
   onTogglePlayback: () => void
   track: SpotifyTrack | null
 }
@@ -25,13 +29,18 @@ interface NowPlayingProps {
 const controlButtonClass =
   'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#27365A] bg-[#09142A]/90 text-gray-200 transition hover:border-emerald-300 hover:bg-emerald-400 hover:text-gray-950 hover:shadow-md hover:shadow-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#27365A] disabled:hover:bg-[#09142A]/90 disabled:hover:text-gray-200 disabled:hover:shadow-none'
 
+const toggleButtonClass =
+  'inline-flex shrink-0 items-center justify-center rounded-full border border-[#27365A] bg-[#09142A]/90 text-gray-200 transition hover:border-emerald-300 hover:bg-emerald-400 hover:text-gray-950 hover:shadow-md hover:shadow-emerald-500/30'
+
 export const NowPlaying = ({
   className = '',
   isLoading,
+  isMinimized = false,
   onLogout,
   onNext,
   onPrevious,
   onSeek,
+  onToggleMinimize,
   onTogglePlayback,
   track,
 }: NowPlayingProps) => {
@@ -72,6 +81,105 @@ export const NowPlaying = ({
       event.preventDefault()
       onSeek(Math.max(0, track.progressMs - stepMs))
     }
+  }
+
+  const progressBar = (
+    <div
+      role="slider"
+      tabIndex={hasTrack ? 0 : -1}
+      aria-label="Şarkı konumu"
+      aria-valuemin={0}
+      aria-valuemax={durationMs}
+      aria-valuenow={track?.progressMs ?? 0}
+      onClick={handleSeek}
+      onKeyDown={handleSeekKeyDown}
+      className="group h-2 cursor-pointer overflow-hidden rounded-full bg-[#1A2742] focus:outline-none focus:ring-2 focus:ring-emerald-400"
+    >
+      <div
+        className="h-full rounded-full bg-emerald-400 transition-[width] duration-500 group-hover:bg-emerald-300"
+        style={{ width: `${progressRatio}%` }}
+      />
+    </div>
+  )
+
+  const playbackControls = (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={onPrevious}
+        disabled={!hasTrack}
+        className={controlButtonClass}
+        title="Önceki parça"
+        aria-label="Önceki parça"
+      >
+        <PreviousIcon className="h-4 w-4" aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        onClick={onTogglePlayback}
+        disabled={!hasTrack}
+        className={controlButtonClass}
+        title={isPlaying ? 'Duraklat' : 'Oynat'}
+        aria-label={isPlaying ? 'Duraklat' : 'Oynat'}
+      >
+        {isPlaying ? (
+          <PauseIcon className="h-4 w-4" aria-hidden="true" />
+        ) : (
+          <PlayIcon className="h-4 w-4" aria-hidden="true" />
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={onNext}
+        disabled={!hasTrack}
+        className={controlButtonClass}
+        title="Sonraki parça"
+        aria-label="Sonraki parça"
+      >
+        <NextIcon className="h-4 w-4" aria-hidden="true" />
+      </button>
+    </div>
+  )
+
+  if (isMinimized) {
+    return (
+      <section
+        className={`${className} flex items-center gap-4 rounded-3xl border border-gray-800 bg-[#020B1F] px-4 py-3 shadow-xl shadow-black/20`}
+      >
+        {track?.albumImageUrl ? (
+          <img
+            src={track.albumImageUrl}
+            alt={`${track.name} kapak görseli`}
+            className="h-14 w-14 shrink-0 rounded-xl object-cover"
+          />
+        ) : (
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#12264A] text-cyan-200">
+            <MusicNoteIcon className="h-6 w-6" aria-hidden="true" />
+          </div>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-base font-semibold text-white">{trackName}</p>
+          <p className="truncate text-sm text-gray-300">{artistName}</p>
+          <div className="mt-1.5">{progressBar}</div>
+        </div>
+
+        {playbackControls}
+
+        {onToggleMinimize ? (
+          <button
+            type="button"
+            onClick={onToggleMinimize}
+            className={`${toggleButtonClass} h-10 w-10`}
+            title="Büyüt"
+            aria-label="Oynatıcıyı büyüt"
+            aria-expanded={false}
+          >
+            <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
+          </button>
+        ) : null}
+      </section>
+    )
   }
 
   return (
@@ -117,73 +225,37 @@ export const NowPlaying = ({
             ) : null}
           </div>
 
-          <button
-            type="button"
-            onClick={onLogout}
-            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#27365A] bg-[#09142A]/90 px-3.5 py-2 text-sm font-medium text-gray-200 transition hover:border-red-400 hover:bg-red-500 hover:text-white hover:shadow-md hover:shadow-red-500/30"
-            title="Spotify oturumunu kapat"
-            aria-label="Çıkış yap"
-          >
-            <LogoutIcon className="h-4 w-4" aria-hidden="true" />
-            <span>Çıkış yap</span>
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={onLogout}
+              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#27365A] bg-[#09142A]/90 px-3.5 py-2 text-sm font-medium text-gray-200 transition hover:border-red-400 hover:bg-red-500 hover:text-white hover:shadow-md hover:shadow-red-500/30"
+              title="Spotify oturumunu kapat"
+              aria-label="Çıkış yap"
+            >
+              <LogoutIcon className="h-4 w-4" aria-hidden="true" />
+              <span>Çıkış yap</span>
+            </button>
+            {onToggleMinimize ? (
+              <button
+                type="button"
+                onClick={onToggleMinimize}
+                className={`${toggleButtonClass} h-10 w-10`}
+                title="Küçült"
+                aria-label="Oynatıcıyı küçült"
+                aria-expanded={true}
+              >
+                <ChevronUpIcon className="h-4 w-4" aria-hidden="true" />
+              </button>
+            ) : null}
+          </div>
         </div>
 
         <div className="mt-auto">
-          <div
-            role="slider"
-            tabIndex={hasTrack ? 0 : -1}
-            aria-label="Şarkı konumu"
-            aria-valuemin={0}
-            aria-valuemax={durationMs}
-            aria-valuenow={track?.progressMs ?? 0}
-            onClick={handleSeek}
-            onKeyDown={handleSeekKeyDown}
-            className="group h-2 cursor-pointer overflow-hidden rounded-full bg-[#1A2742] focus:outline-none focus:ring-2 focus:ring-emerald-400"
-          >
-            <div
-              className="h-full rounded-full bg-emerald-400 transition-[width] duration-500 group-hover:bg-emerald-300"
-              style={{ width: `${progressRatio}%` }}
-            />
-          </div>
+          {progressBar}
           <div className="mt-2 flex items-center justify-between gap-3">
             <span className="text-sm text-gray-400">{formatDuration(track?.progressMs ?? 0)}</span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onPrevious}
-                disabled={!hasTrack}
-                className={controlButtonClass}
-                title="Önceki parça"
-                aria-label="Önceki parça"
-              >
-                <PreviousIcon className="h-4 w-4" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                onClick={onTogglePlayback}
-                disabled={!hasTrack}
-                className={controlButtonClass}
-                title={isPlaying ? 'Duraklat' : 'Oynat'}
-                aria-label={isPlaying ? 'Duraklat' : 'Oynat'}
-              >
-                {isPlaying ? (
-                  <PauseIcon className="h-4 w-4" aria-hidden="true" />
-                ) : (
-                  <PlayIcon className="h-4 w-4" aria-hidden="true" />
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={onNext}
-                disabled={!hasTrack}
-                className={controlButtonClass}
-                title="Sonraki parça"
-                aria-label="Sonraki parça"
-              >
-                <NextIcon className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </div>
+            {playbackControls}
             <span className="text-sm text-gray-400">{formatDuration(durationMs)}</span>
           </div>
         </div>
