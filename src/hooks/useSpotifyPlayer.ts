@@ -31,7 +31,7 @@ interface SpotifyCurrentlyPlayingResponse {
 const ACCESS_STORAGE_KEY = 'spotify_tokens'
 const VERIFIER_STORAGE_KEY = 'spotify_pkce_verifier'
 const POLL_INTERVAL_MS = 1_000
-const LOCAL_PROGRESS_TICK_MS = 200
+const LOCAL_PROGRESS_TICK_MS = 100
 const TOKEN_REFRESH_BUFFER_MS = 60_000
 const SPOTIFY_SCOPES =
   'user-read-currently-playing user-read-playback-state user-modify-playback-state'
