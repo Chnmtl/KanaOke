@@ -126,17 +126,19 @@ const readJsonBody = async (request) => {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'))
 }
 
-const promptForLine = (line, context) => `Sen bir sarki sozu ogretmenisin. Asagidaki satiri analiz et ve Turkce acikla.
+const promptForLine = (line, context, lineRomaji) => `Sen deneyimli bir Japonca şarkı sözü öğretmenisin. Aşağıdaki satırı, şarkının bağlamını dikkate alarak analiz et.
 
-Kurallar:
-- Eger satir Japonca ise romaji alanini doldur, kelime ve kanji detaylarini uygun oldugunda ver.
-- Eger satir Japonca degilse en azindan dogal bir Turkce ceviri ver.
-- Japonca olmayan satirlarda romaji alanini bos birakabilirsin.
-- Japonca olmayan satirlarda kelimeler alanini bos dizi olarak dondur.
-- Her durumda gecerli JSON dondur.
-
+Öncelikler:
+- Birebir değil, doğal ve akıcı bir Türkçe çeviri ver; satırın gerçek anlamını aktar.
+- Kelime oyunu, deyim, mecaz, çift anlam veya kültürel gönderme varsa "turkce" alanında kısaca açıkla.
+- Şarkı adı, sanatçı ve çevredeki satırları bağlam olarak kullan; özne/zamir belirsizse bağlamdan çıkar.
+- Satırın sözlük tabanlı (kuromoji) okunuşu aşağıda "Okunuş (romaji)" olarak referans verilmiştir. Bu okunuşu doğrula: şarkıda alışılmadık/özel bir okunuş (ör. furigana) kullanılıyorsa düzelt, doğruysa olduğu gibi kullan. Satırın "romaji" alanını ve her kelimenin "romaji" alanını doğru Hepburn romaji ile doldur.
+- Her önemli kelime için anlam ver. Kanji içeren kelimelerde kanji detaylarını (onyomi, kunyomi, radikal, kısa açıklama) doldur.
+- Japonca olmayan satırlarda "turkce" alanında önce orijinal metni aynen koru, hemen ardından parantez içinde Türkçe çevirisini ver (örn: I love you (Seni seviyorum)); "kelimeler" alanını boş dizi olarak döndür.
+- Her durumda yalnızca geçerli JSON döndür.
 
 Satır: "${line}"
+Okunuş (romaji): ${lineRomaji || 'Yok'}
 
 Şarkı adı: ${context.trackName ?? 'Bilinmiyor'}
 Sanatçı: ${context.artistName ?? 'Bilinmiyor'}
@@ -164,6 +166,32 @@ ${Array.isArray(context.surroundingLines) && context.surroundingLines.length > 0
     }
   ]
 }`
+
+// kuromoji's dictionary reading is fed to the model as a reference so it can
+// verify/correct the pronunciation (songs often use unusual furigana readings).
+// The model owns the final romaji; we only fall back to the kuromoji reading for
+// any field the model leaves empty so the UI always has something to show.
+const applyFallbackReadings = async (result, lineRomaji) => {
+  if (!result || typeof result !== 'object') {
+    return result
+  }
+
+  if (!result.romaji || typeof result.romaji !== 'string' || !result.romaji.trim()) {
+    result.romaji = lineRomaji
+  }
+
+  if (Array.isArray(result.kelimeler)) {
+    await Promise.all(
+      result.kelimeler.map(async (word) => {
+        if (word && typeof word === 'object' && (!word.romaji || !String(word.romaji).trim())) {
+          word.romaji = await convertToRomaji(word.japonca ?? '')
+        }
+      }),
+    )
+  }
+
+  return result
+}
 
 const extractModelError = async (response) => {
   const rawError = await response.text()
@@ -267,6 +295,10 @@ const server = createServer(async (request, response) => {
       return
     }
 
+    // Resolve the kuromoji reading once: it's fed to the model as a reference
+    // to verify against, and reused as a fallback if the model omits a reading.
+    const lineRomaji = await convertToRomaji(line)
+
     const upstreamResponse = await fetch('https://models.inference.ai.azure.com/chat/completions', {
       method: 'POST',
       headers: {
@@ -274,7 +306,7 @@ const server = createServer(async (request, response) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        messages: [{ content: promptForLine(line, context), role: 'user' }],
+        messages: [{ content: promptForLine(line, context, lineRomaji), role: 'user' }],
         model,
         response_format: { type: 'json_object' },
       }),
@@ -308,13 +340,15 @@ const server = createServer(async (request, response) => {
           .filter(Boolean)
           .join('\n')
 
+    const result = await applyFallbackReadings(JSON.parse(responseText), lineRomaji)
+
     logDebug('analysis_request_succeeded', {
       durationMs: Date.now() - startedAt,
       model,
       status: 200,
     })
 
-    sendJson(response, 200, { result: JSON.parse(responseText) })
+    sendJson(response, 200, { result })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Proxy istegi islenemedi.'
     logDebug('analysis_request_crashed', {

@@ -1,3 +1,4 @@
+import { convertToRomaji, fetchRomaji } from './romaji'
 import type { AnalysisContext, AnalysisResult } from '../types'
 
 interface GitHubModelsResponse {
@@ -26,16 +27,19 @@ const logAnalysisDebug = (event: string, payload: Record<string, unknown>) => {
   console.info(`[analysis] ${event}`, payload)
 }
 
-const promptForLine = (line: string, context: AnalysisContext) => `Sen bir şarkı sözü öğretmenisin. Aşağıdaki satırı analiz et ve Türkçe açıkla.
+const promptForLine = (line: string, context: AnalysisContext, lineRomaji: string) => `Sen deneyimli bir Japonca şarkı sözü öğretmenisin. Aşağıdaki satırı, şarkının bağlamını dikkate alarak analiz et.
 
-Kurallar:
-- Eğer satır Japonca ise doğal bir Türkçe çeviri ver, romaji alanını doldur, kelime ve kanji detaylarını uygun olduğunda ver.
-- Eğer satır Japonca değilse en azından doğal bir Türkçe çeviri ver.
-- Japonca olmayan satırlarda romaji alanını boş bırakabilirsin.
-- Japonca olmayan satırlarda kelimeler alanını boş dizi olarak döndür.
-- Her durumda geçerli JSON döndür.
+Öncelikler:
+- Birebir değil, doğal ve akıcı bir Türkçe çeviri ver; satırın gerçek anlamını aktar.
+- Kelime oyunu, deyim, mecaz, çift anlam veya kültürel gönderme varsa "turkce" alanında kısaca açıkla.
+- Şarkı adı, sanatçı ve çevredeki satırları bağlam olarak kullan; özne/zamir belirsizse bağlamdan çıkar.
+- Satırın sözlük tabanlı (kuromoji) okunuşu aşağıda "Okunuş (romaji)" olarak referans verilmiştir. Bu okunuşu doğrula: şarkıda alışılmadık/özel bir okunuş (ör. furigana) kullanılıyorsa düzelt, doğruysa olduğu gibi kullan. Satırın "romaji" alanını ve her kelimenin "romaji" alanını doğru Hepburn romaji ile doldur.
+- Her önemli kelime için anlam ver. Kanji içeren kelimelerde kanji detaylarını (onyomi, kunyomi, radikal, kısa açıklama) doldur.
+- Japonca olmayan satırlarda "turkce" alanında önce orijinal metni aynen koru, hemen ardından parantez içinde Türkçe çevirisini ver (örn: I love you (Seni seviyorum)); "kelimeler" alanını boş dizi olarak döndür.
+- Her durumda yalnızca geçerli JSON döndür.
 
 Satır: "${line}"
+Okunuş (romaji): ${lineRomaji || 'Yok'}
 
 Şarkı adı: ${context.trackName ?? 'Bilinmiyor'}
 Sanatçı: ${context.artistName ?? 'Bilinmiyor'}
@@ -105,6 +109,30 @@ const normalizeAnalysisResult = (payload: RawAnalysisPayload): AnalysisResult =>
       }))
     : [],
 })
+
+// Mirror of the proxy's fallback: the model owns the final romaji (it verifies
+// the kuromoji reading passed in the prompt and corrects unusual song readings).
+// We only fill in the deterministic kuroshiro reading where the model left a
+// field empty, so the UI always has something to show.
+const applyFallbackReadings = async (
+  result: AnalysisResult,
+  lineRomaji: string,
+): Promise<AnalysisResult> => {
+  const missingWords = result.words.filter((word) => !word.romaji.trim())
+  const wordRomaji = missingWords.length
+    ? await fetchRomaji(missingWords.map((word) => word.japanese))
+    : new Map<string, string>()
+
+  return {
+    ...result,
+    romaji: result.romaji.trim() || lineRomaji,
+    words: result.words.map((word) =>
+      word.romaji.trim()
+        ? word
+        : { ...word, romaji: wordRomaji.get(word.japanese.trim()) ?? '' },
+    ),
+  }
+}
 
 const parseResponseContent = (content: string | Array<{ text?: string; type?: string }>) => {
   if (typeof content === 'string') {
@@ -218,6 +246,10 @@ export const analyzeJapaneseLine = async (
   })
 
   try {
+    // Resolve the kuromoji reading once: fed to the model as a reference to
+    // verify against, and reused as a fallback if the model omits a reading.
+    const lineRomaji = await convertToRomaji(line)
+
     const response = await fetch('https://models.inference.ai.azure.com/chat/completions', {
       method: 'POST',
       headers: {
@@ -225,7 +257,7 @@ export const analyzeJapaneseLine = async (
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        messages: [{ content: promptForLine(line, context), role: 'user' }],
+        messages: [{ content: promptForLine(line, context, lineRomaji), role: 'user' }],
         model,
         response_format: { type: 'json_object' },
       }),
@@ -267,7 +299,7 @@ export const analyzeJapaneseLine = async (
     }
 
     const parsed = JSON.parse(parseResponseContent(content)) as RawAnalysisPayload
-    return normalizeAnalysisResult(parsed)
+    return applyFallbackReadings(normalizeAnalysisResult(parsed), lineRomaji)
   } catch (error) {
     logAnalysisDebug('direct_request_failed', {
       durationMs: Date.now() - startedAt,

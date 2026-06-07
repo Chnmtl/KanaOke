@@ -340,7 +340,7 @@ export const LyricsDisplay = ({
                     <p className="jp-text leading-relaxed text-inherit">{line.text}</p>
                     {(cachedAnalysis?.romaji || romajiByLineId.get(line.id)) ? (
                       <p className="mt-0.5 text-sm italic text-gray-400">
-                        {cachedAnalysis?.romaji ?? romajiByLineId.get(line.id)}
+                        {cachedAnalysis?.romaji || romajiByLineId.get(line.id)}
                       </p>
                     ) : null}
                     {cachedAnalysis?.translation ? (

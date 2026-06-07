@@ -1,78 +1,58 @@
 # JaponcaEgitim
 
-Spotify'da çalan şarkıyı algılayan, LRCLIB'den senkronize sözleri çeken ve Japonca satırları GitHub Models API ile analiz eden React + Vite + TypeScript uygulaması.
+Spotify'da çalan Japonca şarkıları öğrenme aracına dönüştüren bir web uygulaması. Çalan parçayı algılar, senkronize sözlerini ekrana getirir, romaji okumalarını gösterir ve istediğin satırı tek tıkla Türkçe çeviri, kelime ve kanji detaylarıyla analiz eder.
 
-## Özellikler
+React + Vite + TypeScript ile yazılmıştır; analiz ve romaji üretimi için küçük bir Node proxy kullanır.
 
-- Spotify OAuth 2.0 PKCE ile tarayıcı tabanlı giriş
-- Her saniye güncellenen "şu an çalan" şarkı bilgisi
-- LRCLIB üzerinden senkronize LRC sözleri ve karaoke vurgusu
-- GitHub Models API ile romaji, Türkçe çeviri, kelime ve kanji analizi
-- Tailwind CSS ile koyu tema, iki kolonlu arayüz
+## Ne yapar?
+
+- 🎵 **Çalan şarkıyı algılar** — Spotify'a giriş yap, çalan parça ve süresi anlık olarak takip edilir.
+- ▶️ **Oynatmayı kontrol et** — uygulamadan oynat/duraklat, sonraki/önceki ve süre çubuğunda atlama (Spotify Premium ile).
+- 📝 **Senkronize sözler ve karaoke** — LRCLIB'den çekilen sözlerde aktif satır vurgulanarak takip edilir. Söz yoksa veya yanlışsa kendi sözlerini yapıştırabilirsin.
+- 🔤 **Romaji okumaları** — şarkı bilgisi ve Japonca satırlar için Latin harfli okunuş otomatik gösterilir.
+- 🧠 **Satır analizi** — bir satıra tıkla; bağlama uygun doğal bir Türkçe çeviri, her kelimenin anlamı ve kanji detayları (onyomi, kunyomi, radikal, açıklama) gelir.
+- ⚡ **Hızlı tekrar** — çekilen sözler ve yapılan analizler tarayıcıda saklanır; aynı satır bir daha anında açılır.
 
 ## Kurulum
 
-1. **Spotify Developer Dashboard**
-   - https://developer.spotify.com/dashboard adresinden uygulama oluştur.
-   - Redirect URI olarak yerelde `http://127.0.0.1:5173/callback` ekle.
-   - Codespaces kullanıyorsan ayrıca `https://<codespace-adı>-5173.app.github.dev/callback` biçimindeki URI'yi de ekle.
+Gerekenler: Node.js, bir Spotify hesabı (oynatma kontrolleri için Premium) ve GitHub Models erişimi olan bir kişisel erişim anahtarı (PAT).
 
-2. **GitHub Models için backend proxy hazırla (önerilen)**
-   - GitHub Models API anahtarını istemciye koyma.
-   - Token'ı yalnızca sunucu tarafında tutan bir endpoint kullan (ör. `/api/analyze`).
-   - Bu repo artık yerel geliştirme için `npm run proxy` komutuyla çalışan küçük bir Node proxy içerir.
+1. **Spotify uygulaması oluştur.** https://developer.spotify.com/dashboard adresinden bir uygulama aç ve Redirect URI olarak `http://127.0.0.1:5173/callback` ekle.
 
-3. **`.env` dosyasını ayarla**
-   - Kök dizinde `.env.example` dosyasını `.env` olarak kopyala ve değerleri doldur.
-   - `VITE_ANALYSIS_API_URL` değerini backend endpoint'ine yönlendir.
-   - `VITE_ALLOW_INSECURE_CLIENT_TOKEN` değerini `false` bırak.
-   - `GITHUB_MODELS_TOKEN` değerine PAT ekle. `VITE_` öneki kullanma.
+2. **`.env` dosyasını hazırla.** Kök dizindeki `.env.example` dosyasını `.env` olarak kopyala ve değerleri doldur — en önemlileri Spotify Client ID ve `GITHUB_MODELS_TOKEN`. Tüm değişkenlerin açıklaması için [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
 
-4. **Bağımlılıkları kur ve çalıştır**
+3. **Bağımlılıkları kur ve çalıştır.**
    ```bash
    npm install
-   npm run proxy
-   npm run dev
+   npm run proxy   # ayrı bir terminalde — analiz + romaji sunucusu
+   npm run dev     # Vite geliştirme sunucusu
    ```
 
-5. **Uygulamayı aç**
-   - Tarayıcıda Vite adresine git.
-   - Spotify ile giriş yap.
-   - Çalan Japonca şarkının senkronize satırlarını inceleyip analiz için satıra tıkla.
+4. **Tarayıcıda aç.** Vite'in verdiği adrese git ve Spotify ile giriş yap.
 
-## Geliştirme Komutları
+## Nasıl kullanılır?
+
+1. Spotify ile giriş yap; bilgisayarında veya telefonunda Spotify'da bir Japonca şarkı çal.
+2. Çalan parça ve senkronize sözleri ekranda belirir; aktif satır karaoke gibi vurgulanır.
+3. Anlamını öğrenmek istediğin satıra tıkla — sağ panelde çeviri, kelimeler ve kanji detayları açılır.
+4. Söz bulunamazsa veya hatalıysa "manuel söz" alanına kendi sözlerini yapıştır.
+
+> İpucu: Masaüstünde üstteki "şu an çalan" paneli küçültülerek sözlere daha fazla yer açılabilir; mobilde oynatıcı ekranın altına sabitlenir.
+
+## Geliştirme
 
 ```bash
-npm run proxy
-npm run dev
-npm run lint
-npm run build
+npm run proxy     # analiz + romaji proxy
+npm run dev       # geliştirme sunucusu
+npm run lint      # ESLint
+npm run build     # üretim derlemesi
+npm run preview   # derlemeyi önizle
 ```
 
-## Codespaces Notları
+## Daha fazlası
 
-- Public port 5173 adresini aç ve oluşan URL'nin sonuna `/callback` ekleyerek Spotify Redirect URI olarak kaydet.
-- `VITE_SPOTIFY_REDIRECT_URI` değerini bu callback adresiyle eşleştir.
-- GitHub token'ını istemci `.env` dosyasına koyma; backend tarafında Codespaces secret olarak kullan.
-- Sadece geçici test için `VITE_ALLOW_INSECURE_CLIENT_TOKEN=true` ve `VITE_GITHUB_TOKEN` kullanımı mümkündür (üretimde önerilmez).
+- **Yapılandırma, ortam değişkenleri, Codespaces ve proxy ayrıntıları:** [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
 
-## Yerel Analiz Proxy'si
+## Teknolojiler
 
-- Proxy `http://127.0.0.1:8787/api/analyze` adresinde çalışır.
-- Varsayılan portu değiştirmek için `ANALYSIS_PROXY_PORT` kullan.
-- Proxy `GITHUB_MODELS_TOKEN` değerini `process.env`, `.env.local` veya `.env` içinden okur.
-- Sağlık kontrolü için `http://127.0.0.1:8787/health` adresini açabilirsin.
-
-### Romaji Okumaları
-
-- Romaji, aynı proxy üzerinde `http://127.0.0.1:8787/api/romaji` adresinden üretilir.
-- Kuroshiro + kuromoji, sözlüğü doğrudan `node_modules/kuromoji/dict` içinden okuyarak **Node tarafında** çalışır; tarayıcıya sözlük indirilmez ve herhangi bir shim/polyfill gerekmez.
-- `POST` gövdesi `{ "texts": ["東京", ...] }` (veya tek metin için `{ "text": "..." }`) alır, `{ "romaji": ["tōkyō", ...] }` döner. Japonca olmayan metinler için boş dize döner.
-- İstemci tarafında endpoint'i `VITE_ROMAJI_API_URL` ile ayarla. Tanımlı değilse romaji gösterilmez (uygulama yine çalışır).
-- Şarkı adı/sanatçı/albüm ve tüm Japonca söz satırları için romaji otomatik gösterilir; sonuçlar tarayıcıda önbelleğe alınır.
-
-### Debug Logları
-
-- Tarayıcı tarafında analiz çağrısı loglarını görmek için `VITE_ANALYSIS_DEBUG=true` ayarla.
-- Proxy tarafında model, süre ve durum loglarını görmek için `ANALYSIS_PROXY_DEBUG=true` ayarla.
-- Debug logları hiçbir zaman token değerini yazdırmaz.
+React 19 · Vite · TypeScript · Tailwind CSS · Spotify Web API (OAuth 2.0 PKCE) · LRCLIB · GitHub Models · kuroshiro + kuromoji (romaji)

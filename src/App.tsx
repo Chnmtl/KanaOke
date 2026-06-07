@@ -7,7 +7,7 @@ import { NowPlaying } from './components/NowPlaying'
 import { useLyrics } from './hooks/useLyrics'
 import { useSpotifyPlayer } from './hooks/useSpotifyPlayer'
 import type { AnalysisResult, LyricsLine } from './types'
-const ANALYSIS_CACHE_PREFIX = 'japoncaegitim:analysis-cache:v3'
+const ANALYSIS_CACHE_PREFIX = 'japoncaegitim:analysis-cache:v4'
 const ANALYSIS_CACHE_TTL_MS = 14 * 24 * 60 * 60 * 1_000
 
 const normalizeAnalysisLineText = (lineText: string) =>
