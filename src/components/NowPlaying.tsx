@@ -204,12 +204,14 @@ export const NowPlaying = ({
       <div className="flex min-w-0 flex-1 flex-col gap-4">
         <div className="flex items-start gap-4">
           <div className="min-w-0 flex-1">
-            <h2 className="truncate text-xl font-semibold leading-tight text-white sm:text-2xl">
-              {trackName}
+            <h2 className="flex items-baseline gap-2 truncate text-xl font-semibold leading-tight text-white sm:text-2xl">
+              <span className="truncate">{trackName}</span>
+              {nameRomaji ? (
+                <span className="shrink-0 text-sm font-normal italic text-gray-400">
+                  ({nameRomaji})
+                </span>
+              ) : null}
             </h2>
-            {nameRomaji ? (
-              <p className="truncate text-sm italic text-gray-400">{nameRomaji}</p>
-            ) : null}
             <p className="mt-1 truncate text-base font-medium text-gray-300 sm:text-lg">
               {artistName}
             </p>

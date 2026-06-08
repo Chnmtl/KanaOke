@@ -4,6 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import KuroshiroImport from 'kuroshiro'
 import KuromojiAnalyzerImport from 'kuroshiro-analyzer-kuromoji'
+import { promptForLine } from '../shared/analysisPrompt.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -125,47 +126,6 @@ const readJsonBody = async (request) => {
 
   return JSON.parse(Buffer.concat(chunks).toString('utf8'))
 }
-
-const promptForLine = (line, context, lineRomaji) => `Sen deneyimli bir Japonca şarkı sözü öğretmenisin. Aşağıdaki satırı, şarkının bağlamını dikkate alarak analiz et.
-
-Öncelikler:
-- Birebir değil, doğal ve akıcı bir Türkçe çeviri ver; satırın gerçek anlamını aktar.
-- Kelime oyunu, deyim, mecaz, çift anlam veya kültürel gönderme varsa "turkce" alanında kısaca açıkla.
-- Şarkı adı, sanatçı ve çevredeki satırları bağlam olarak kullan; özne/zamir belirsizse bağlamdan çıkar.
-- Satırın sözlük tabanlı (kuromoji) okunuşu aşağıda "Okunuş (romaji)" olarak referans verilmiştir. Bu okunuşu doğrula: şarkıda alışılmadık/özel bir okunuş (ör. furigana) kullanılıyorsa düzelt, doğruysa olduğu gibi kullan. Satırın "romaji" alanını ve her kelimenin "romaji" alanını doğru Hepburn romaji ile doldur.
-- Her önemli kelime için anlam ver. Kanji içeren kelimelerde kanji detaylarını (onyomi, kunyomi, radikal, kısa açıklama) doldur.
-- Japonca olmayan satırlarda "turkce" alanında önce orijinal metni aynen koru, hemen ardından parantez içinde Türkçe çevirisini ver (örn: I love you (Seni seviyorum)); "kelimeler" alanını boş dizi olarak döndür.
-- Her durumda yalnızca geçerli JSON döndür.
-
-Satır: "${line}"
-Okunuş (romaji): ${lineRomaji || 'Yok'}
-
-Şarkı adı: ${context.trackName ?? 'Bilinmiyor'}
-Sanatçı: ${context.artistName ?? 'Bilinmiyor'}
-Satır sırası: ${(context.lineIndex ?? 0) + 1}
-
-Çevredeki satırlar:
-${Array.isArray(context.surroundingLines) && context.surroundingLines.length > 0 ? context.surroundingLines.map((item, index) => `${index + 1}. ${item}`).join('\n') : 'Yok'}
-
-Şu formatta JSON döndür:
-{
-  "romaji": "...",
-  "turkce": "...",
-  "kelimeler": [
-    {
-      "japonca": "...",
-      "romaji": "...",
-      "anlam": "...",
-      "kanji": {
-        "karakter": "...",
-        "onyomi": "...",
-        "kunyomi": "...",
-        "radikal": "...",
-        "aciklama": "..."
-      }
-    }
-  ]
-}`
 
 // kuromoji's dictionary reading is fed to the model as a reference so it can
 // verify/correct the pronunciation (songs often use unusual furigana readings).

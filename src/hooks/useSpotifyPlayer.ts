@@ -30,9 +30,10 @@ interface SpotifyCurrentlyPlayingResponse {
 
 const ACCESS_STORAGE_KEY = 'spotify_tokens'
 const VERIFIER_STORAGE_KEY = 'spotify_pkce_verifier'
-const POLL_INTERVAL_MS = 1_000
+const POLL_INTERVAL_MS = 5_000
 const LOCAL_PROGRESS_TICK_MS = 100
 const TOKEN_REFRESH_BUFFER_MS = 60_000
+const DEFAULT_RATE_LIMIT_BACKOFF_MS = 30_000
 const SPOTIFY_SCOPES =
   'user-read-currently-playing user-read-playback-state user-modify-playback-state'
 
@@ -115,6 +116,7 @@ export const useSpotifyPlayer = () => {
   const accessTokenRef = useRef<string | null>(null)
   const refreshTokenRef = useRef<string | null>(null)
   const lastProgressTickAtRef = useRef<number | null>(null)
+  const rateLimitedUntilRef = useRef<number>(0)
   const isConfigured = useMemo(() => Boolean(clientId && redirectUri), [clientId, redirectUri])
 
   const refreshAccessToken = useCallback(async () => {
@@ -206,6 +208,10 @@ export const useSpotifyPlayer = () => {
   )
 
   const fetchCurrentlyPlaying = useCallback(async () => {
+    if (Date.now() < rateLimitedUntilRef.current) {
+      return
+    }
+
     const accessToken = await ensureAccessToken()
 
     if (!accessToken) {
@@ -220,6 +226,16 @@ export const useSpotifyPlayer = () => {
 
       if (response.status === 401) {
         response = await requestCurrentlyPlaying(await refreshAccessToken())
+      }
+
+      if (response.status === 429) {
+        const retryAfterSeconds = Number(response.headers.get('Retry-After'))
+        const backoffMs =
+          Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+            ? retryAfterSeconds * 1_000
+            : DEFAULT_RATE_LIMIT_BACKOFF_MS
+        rateLimitedUntilRef.current = Date.now() + backoffMs
+        return
       }
 
       if (response.status === 204) {

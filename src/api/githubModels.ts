@@ -1,4 +1,5 @@
 import { convertToRomaji, fetchRomaji } from './romaji'
+import { promptForLine } from '../../shared/analysisPrompt.mjs'
 import type { AnalysisContext, AnalysisResult } from '../types'
 
 interface GitHubModelsResponse {
@@ -27,47 +28,6 @@ const logAnalysisDebug = (event: string, payload: Record<string, unknown>) => {
   console.info(`[analysis] ${event}`, payload)
 }
 
-const promptForLine = (line: string, context: AnalysisContext, lineRomaji: string) => `Sen deneyimli bir Japonca şarkı sözü öğretmenisin. Aşağıdaki satırı, şarkının bağlamını dikkate alarak analiz et.
-
-Öncelikler:
-- Birebir değil, doğal ve akıcı bir Türkçe çeviri ver; satırın gerçek anlamını aktar.
-- Kelime oyunu, deyim, mecaz, çift anlam veya kültürel gönderme varsa "turkce" alanında kısaca açıkla.
-- Şarkı adı, sanatçı ve çevredeki satırları bağlam olarak kullan; özne/zamir belirsizse bağlamdan çıkar.
-- Satırın sözlük tabanlı (kuromoji) okunuşu aşağıda "Okunuş (romaji)" olarak referans verilmiştir. Bu okunuşu doğrula: şarkıda alışılmadık/özel bir okunuş (ör. furigana) kullanılıyorsa düzelt, doğruysa olduğu gibi kullan. Satırın "romaji" alanını ve her kelimenin "romaji" alanını doğru Hepburn romaji ile doldur.
-- Her önemli kelime için anlam ver. Kanji içeren kelimelerde kanji detaylarını (onyomi, kunyomi, radikal, kısa açıklama) doldur.
-- Japonca olmayan satırlarda "turkce" alanında önce orijinal metni aynen koru, hemen ardından parantez içinde Türkçe çevirisini ver (örn: I love you (Seni seviyorum)); "kelimeler" alanını boş dizi olarak döndür.
-- Her durumda yalnızca geçerli JSON döndür.
-
-Satır: "${line}"
-Okunuş (romaji): ${lineRomaji || 'Yok'}
-
-Şarkı adı: ${context.trackName ?? 'Bilinmiyor'}
-Sanatçı: ${context.artistName ?? 'Bilinmiyor'}
-Satır sırası: ${context.lineIndex + 1}
-
-Çevredeki satırlar:
-${context.surroundingLines.length > 0 ? context.surroundingLines.map((item, index) => `${index + 1}. ${item}`).join('\n') : 'Yok'}
-
-Şu formatta JSON döndür:
-{
-  "romaji": "...",
-  "turkce": "...",
-  "kelimeler": [
-    {
-      "japonca": "...",
-      "romaji": "...",
-      "anlam": "...",
-      "kanji": {
-        "karakter": "...",
-        "onyomi": "...",
-        "kunyomi": "...",
-        "radikal": "...",
-        "aciklama": "..."
-      }
-    }
-  ]
-}`
-
 interface RawKanji {
   aciklama?: string
   karakter?: string
@@ -83,15 +43,51 @@ interface RawWord {
   romaji?: string
 }
 
+interface RawForeign {
+  anlam?: string
+  metin?: string
+}
+
 interface RawAnalysisPayload {
   kelimeler?: RawWord[]
   romaji?: string
   turkce?: string
+  yabanci?: RawForeign[]
+}
+
+// The model keeps non-Japanese (e.g. English) segments verbatim inside the
+// Turkish translation and lists each one in `yabanci` with its meaning. We do
+// the parenthetical insertion here so the format is deterministic and the
+// original text is guaranteed to survive: "Its a deal" -> "Its a deal (anlaştık)".
+const applyForeignGlosses = (translation: string, foreign?: RawForeign[]): string => {
+  if (!translation || !Array.isArray(foreign)) {
+    return translation
+  }
+
+  return foreign.reduce((text, entry) => {
+    const metin = entry.metin?.trim() ?? ''
+    const anlam = entry.anlam?.trim() ?? ''
+
+    if (!metin || !anlam) {
+      return text
+    }
+
+    const index = text.indexOf(metin)
+    const after = index === -1 ? '' : text.slice(index + metin.length)
+
+    // Skip if the segment is missing, or already followed by a parenthetical
+    // (model glossed it itself, or this ran twice) to avoid "deal (x) (x)".
+    if (index === -1 || after.trimStart().startsWith('(')) {
+      return text
+    }
+
+    return `${text.slice(0, index + metin.length)} (${anlam})${after}`
+  }, translation)
 }
 
 const normalizeAnalysisResult = (payload: RawAnalysisPayload): AnalysisResult => ({
   romaji: payload.romaji?.trim() ?? '',
-  translation: payload.turkce?.trim() ?? '',
+  translation: applyForeignGlosses(payload.turkce?.trim() ?? '', payload.yabanci),
   words: Array.isArray(payload.kelimeler)
     ? payload.kelimeler.map((word) => ({
         japanese: word.japonca?.trim() ?? '',
