@@ -19,6 +19,20 @@ Built with React + Vite + TypeScript, plus a small Node proxy for analysis and r
 - 🧠 **Line analysis** — click a line to get a natural, context-aware translation, the meaning of each word, and kanji details (on'yomi, kun'yomi, radical, description).
 - ⚡ **Fast repeats** — fetched lyrics and analyses are cached in the browser, so the same line opens instantly next time.
 
+## Screenshots
+
+Desktop — synced karaoke lyrics on the left, line analysis with translation, per-word meanings, and kanji details on the right:
+
+![Desktop — synced lyrics and line analysis](docs/screenshots/desktop.png)
+
+| Karaoke view | Line analysis (kanji details) |
+|---|---|
+| ![Karaoke view — active line highlighted](docs/screenshots/karaoke.png) | ![Line analysis — translation, words, kanji](docs/screenshots/analysis.png) |
+
+Mobile — the player stays pinned to the bottom:
+
+<img src="docs/screenshots/mobile.png" width="360" alt="Mobile — pinned bottom player" />
+
 ## Setup
 
 You'll need: Node.js, a Spotify account (Premium for playback controls), and a personal access token (PAT) with access to GitHub Models.

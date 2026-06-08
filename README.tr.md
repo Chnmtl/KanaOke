@@ -17,6 +17,20 @@ React + Vite + TypeScript ile yazılmıştır; analiz ve romaji üretimi için k
 - 🧠 **Satır analizi** — bir satıra tıkla; bağlama uygun doğal bir Türkçe çeviri, her kelimenin anlamı ve kanji detayları (onyomi, kunyomi, radikal, açıklama) gelir.
 - ⚡ **Hızlı tekrar** — çekilen sözler ve yapılan analizler tarayıcıda saklanır; aynı satır bir daha anında açılır.
 
+## Ekran görüntüleri
+
+Masaüstü — solda senkronize karaoke sözleri, sağda çeviri, kelime anlamları ve kanji detaylarıyla satır analizi:
+
+![Masaüstü — senkronize sözler ve satır analizi](docs/screenshots/desktop.png)
+
+| Karaoke görünümü | Satır analizi (kanji detayları) |
+|---|---|
+| ![Karaoke görünümü — aktif satır vurgulu](docs/screenshots/karaoke.png) | ![Satır analizi — çeviri, kelimeler, kanji](docs/screenshots/analysis.png) |
+
+Mobil — oynatıcı ekranın altına sabitlenir:
+
+<img src="docs/screenshots/mobile.png" width="360" alt="Mobil — alta sabitlenmiş oynatıcı" />
+
 ## Kurulum
 
 Gerekenler: Node.js, bir Spotify hesabı (oynatma kontrolleri için Premium) ve GitHub Models erişimi olan bir kişisel erişim anahtarı (PAT).
